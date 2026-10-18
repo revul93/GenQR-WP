@@ -22,6 +22,7 @@ Design notes and decisions are in [PLAN.md](PLAN.md).
 ## Install
 
 Step-by-step for GoDaddy, including the database and WordPress settings: **[docs/deploy-godaddy.md](docs/deploy-godaddy.md)**.
+To have an AI agent do the deployment, give it **[docs/ai-deploy-runbook.md](docs/ai-deploy-runbook.md)** together with the credentials.
 
 1. Download `genqr-<version>.zip` from [Releases](https://github.com/revul93/GenQR-WP/releases), or from the latest CI run's artifacts.
 2. In wp-admin, go to **Plugins → Add New → Upload Plugin**, choose the zip and click **Activate**.
