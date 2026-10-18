@@ -10,7 +10,7 @@ A WordPress plugin for branded QR codes that point to short links you control.
 - Logos are uploaded by the admin, and visitors choose from them.
 - **All QR codes** page: anyone can browse and search every active code (title, short link, destination, scans) and open one to download it again. You can switch this off in Settings.
 - The generator page has its own clean layout: a top bar with your name ("GenQR") and no theme header, menu or footer. You can switch this off to use the theme's layout instead.
-- Brand presets give one-click colour schemes taken from the logo: Rainbow, Sunset, Ocean, Forest, Royal, Classic blue and Black.
+- Presets (managed in Settings) give one-click designs; it ships with Black, Indigo, Lagoon, Coral and Emerald, all with a rounded pattern and circular corners.
 
 Design notes and decisions are in [PLAN.md](PLAN.md).
 

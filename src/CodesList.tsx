@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { ClientConfig, PublicLink } from './config';
 import { renderSvg } from './engine/render';
-import { ExportDialog, QuickDownload } from './ExportDialog';
+import { DownloadSplit, ExportDialog } from './ExportDialog';
 import { Alert, Button, CopyButton, Field, Icon } from './ui';
 import { useLogo } from './useQr';
 
@@ -124,10 +124,7 @@ function CodeCard({ item, config, onOpen }: { item: PublicLink; config: ClientCo
           {created && ` · created ${created}`}
         </p>
         <div class="card-actions">
-          <Button variant="outlined" size="small" icon="download" onClick={() => setDialog(true)}>
-            Download…
-          </Button>
-          <QuickDownload size="small" svgAt={svgAt} background={background} filename={filename} />
+          <DownloadSplit svgAt={svgAt} background={background} filename={filename} onMore={() => setDialog(true)} />
         </div>
         <ExportDialog open={dialog} onClose={() => setDialog(false)} svgAt={svgAt} background={background} filename={filename} />
       </div>

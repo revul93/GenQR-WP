@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { download, exportQr, printQr, type ExportFormat, type SvgAtSize } from './engine/export';
 import { loadPrefs, prefsLabel, savePrefs, useDownloadPrefs } from './downloadPrefs';
-import { Alert, Button, Dialog, Field, Select } from './ui';
+import { Alert, Button, Dialog, Field, Icon, Select } from './ui';
 
 const FORMATS = [
   { value: 'png', label: 'PNG image', unit: 'px', sizes: [512, 1024, 2048, 4096], size: 1024 },
@@ -137,5 +137,34 @@ export function QuickDownload({ svgAt, background, filename, disabled, title, si
     <Button variant="outlined" size={size} icon="download" full={!size} disabled={disabled || busy} title={title || `Download as ${prefsLabel(prefs)}`} onClick={run}>
       {busy ? 'Preparing…' : prefsLabel(prefs)}
     </Button>
+  );
+}
+
+/**
+ * Compact split button for the "All QR codes" cards: one-click download with the remembered
+ * options, plus a small button that opens the Download dialog.
+ */
+export function DownloadSplit({ svgAt, background, filename, onMore }: { svgAt: SvgAtSize; background: string; filename: string; onMore(): void }) {
+  const prefs = useDownloadPrefs();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      download(await exportQr(prefs.format, svgAt, prefs.size, background), `${filename}.${prefs.format}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div class="split" role="group" aria-label="Download">
+      <button type="button" class="split-main" onClick={run} disabled={busy} title={`Download as ${prefsLabel(prefs)}`}>
+        <Icon name="download" />
+        <span class="split-text">{busy ? 'Preparing…' : 'Download'}</span>
+        {!busy && <span class="split-meta">{prefsLabel(prefs)}</span>}
+      </button>
+      <button type="button" class="split-more" onClick={onMore} title="Other formats and sizes" aria-label="Other formats and sizes">
+        <Icon name="tune" />
+      </button>
+    </div>
   );
 }

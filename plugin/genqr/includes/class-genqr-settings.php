@@ -27,8 +27,8 @@ class GenQR_Settings {
 				'foreground'    => '#0b5394',
 				'background'    => '#ffffff',
 				'moduleShape'   => 'rounded',
-				'eyeFrameShape' => 'rounded',
-				'eyeBallShape'  => 'rounded',
+				'eyeFrameShape' => 'circle',
+				'eyeBallShape'  => 'circle',
 			),
 			'presets'        => self::default_presets(),
 			'default_preset' => 0,          // index into presets; the design the generator starts with
@@ -39,28 +39,28 @@ class GenQR_Settings {
 
 	/** Ready-made designs from the logo's colours; each keeps at least 3:1 contrast on white. */
 	public static function default_presets() {
-		$preset = static function ( $name, $fg, $gradient, $eye ) {
+		// Every preset: rounded pattern, circular corners.
+		$preset = static function ( $name, $fg, $gradient = null ) {
 			return array(
 				'name'  => $name,
 				'style' => array(
 					'foreground'    => $fg,
 					'background'    => '#ffffff',
 					'gradient'      => $gradient,
-					'eyeColor'      => $eye,
+					'eyeColor'      => null,
 					'moduleShape'   => 'rounded',
-					'eyeFrameShape' => 'rounded',
-					'eyeBallShape'  => 'rounded',
+					'eyeFrameShape' => 'circle',
+					'eyeBallShape'  => 'circle',
 				),
 			);
 		};
 		$linear = static fn( $to ) => array( 'type' => 'linear', 'color' => $to, 'rotation' => 45 );
 		return array(
-			$preset( 'Sunset', '#e53935', $linear( '#8e24aa' ), '#b71c1c' ),
-			$preset( 'Ocean', '#00838f', $linear( '#1565c0' ), '#0d47a1' ),
-			$preset( 'Forest', '#2e7d32', $linear( '#00838f' ), '#1b5e20' ),
-			$preset( 'Royal', '#4527a0', array( 'type' => 'radial', 'color' => '#c2185b', 'rotation' => 45 ), '#4527a0' ),
-			$preset( 'Classic blue', '#0b5394', null, null ),
-			$preset( 'Black', '#000000', null, null ),
+			$preset( 'Black', '#000000' ),
+			$preset( 'Indigo', '#4f46e5', $linear( '#9333ea' ) ),
+			$preset( 'Lagoon', '#0d9488', $linear( '#2563eb' ) ),
+			$preset( 'Coral', '#e11d48', $linear( '#ea580c' ) ),
+			$preset( 'Emerald', '#059669', $linear( '#0891b2' ) ),
 		);
 	}
 

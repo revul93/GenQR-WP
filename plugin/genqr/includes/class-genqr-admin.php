@@ -396,7 +396,7 @@ class GenQR_Admin {
 									<?php endforeach; ?>
 								</tbody>
 							</table>
-							<template id="genqr-preset-template"><?php self::preset_row( '__i__', array( 'name' => '', 'style' => GenQR_Settings::default_presets()[4]['style'] ), false ); ?></template>
+							<template id="genqr-preset-template"><?php self::preset_row( '__i__', array( 'name' => '', 'style' => GenQR_Settings::default_presets()[0]['style'] ), false ); ?></template>
 							<p><button type="button" class="button" id="genqr-add-preset"><?php esc_html_e( 'Add preset', 'genqr' ); ?></button></p>
 						</td>
 					</tr>

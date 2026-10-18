@@ -164,8 +164,17 @@ export const CSS = `
 .card-title{font-size:1rem;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-body .mono{color:var(--primary);text-decoration:none;font-size:.8125rem}
 .card-body .caption a{color:inherit}
-.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
-.card-actions .btn{flex:1}
+.card-actions{margin:8px 0 8px}
+.split{display:flex;width:100%;border:1px solid color-mix(in srgb,var(--primary) 50%,transparent);border-radius:8px;overflow:hidden}
+.split button{font:inherit;color:var(--primary);background:#fff;border:0;cursor:pointer;display:flex;align-items:center;transition:background-color .15s}
+.split button:hover{background:color-mix(in srgb,var(--primary) 6%,#fff)}
+.split button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.split button:disabled{color:var(--disabled);cursor:default}
+.split .icon{width:18px;height:18px;fill:currentColor}
+.split-main{flex:1;min-width:0;gap:8px;padding:7px 12px}
+.split-text{font-size:.875rem;font-weight:500}
+.split-meta{margin-left:auto;font-size:.75rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.05);border-radius:10px;padding:1px 8px}
+.split-more{width:40px;justify-content:center;border-left:1px solid color-mix(in srgb,var(--primary) 30%,transparent)!important;flex-shrink:0}
 .muted-text{color:var(--disabled);font-weight:400}
 .icon.small{width:18px;height:18px}
 .row.center{justify-content:center}
