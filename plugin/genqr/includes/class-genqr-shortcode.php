@@ -43,7 +43,7 @@ class GenQR_Shortcode {
 		wp_enqueue_script_module( 'genqr', GENQR_URL . 'assets/build/genqr.js', array(), filemtime( $bundle ) );
 
 		return sprintf(
-			'<div class="genqr-root" data-config="%s"><noscript>%s</noscript></div>',
+			'<div class="genqr-root alignwide" data-config="%s"><noscript>%s</noscript></div>',
 			esc_attr( wp_json_encode( $config ) ),
 			esc_html__( 'The QR code generator needs JavaScript.', 'genqr' )
 		);

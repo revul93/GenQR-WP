@@ -94,13 +94,32 @@ export function renderSvg({ data, style, logoDataUri, sizePx = 512 }: RenderOpti
     eyes += `<path d="${roundRect(x + 2, y + 2, 3, 3, BALL_RADIUS[style.eyeBallShape])}"/>`;
   }
 
+  let defs = '';
+  let moduleFill = style.foreground;
+  if (style.gradient) {
+    const g = style.gradient;
+    if (g.type === 'linear') {
+      const a = ((g.rotation - 90) * Math.PI) / 180;
+      const cx = total / 2;
+      const half = n / 2;
+      const [dx, dy] = [Math.cos(a) * half, Math.sin(a) * half];
+      defs = `<linearGradient id="fg" gradientUnits="userSpaceOnUse" x1="${f(cx - dx)}" y1="${f(cx - dy)}" x2="${f(cx + dx)}" y2="${f(cx + dy)}">`;
+    } else {
+      defs = `<radialGradient id="fg" gradientUnits="userSpaceOnUse" cx="${f(total / 2)}" cy="${f(total / 2)}" r="${f(n * 0.7)}">`;
+    }
+    defs += `<stop offset="0" stop-color="${style.foreground}"/><stop offset="1" stop-color="${g.color}"/></${g.type}Gradient>`;
+    moduleFill = 'url(#fg)';
+  }
+  const eyeFill = style.eyeColor ?? moduleFill;
+
   const parts: string[] = [];
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${sizePx}" height="${sizePx}"${style.moduleShape === 'square' ? ' shape-rendering="crispEdges"' : ''}>`,
   );
+  if (defs) parts.push(`<defs>${defs}</defs>`);
   if (!style.transparentBackground) parts.push(`<rect width="${total}" height="${total}" fill="${style.background}"/>`);
-  parts.push(`<path fill="${style.foreground}" d="${modules}"/>`);
-  parts.push(`<g fill="${style.eyeColor ?? style.foreground}" shape-rendering="geometricPrecision">${eyes}</g>`);
+  parts.push(`<path fill="${moduleFill}" d="${modules}"/>`);
+  parts.push(`<g fill="${eyeFill}" shape-rendering="geometricPrecision">${eyes}</g>`);
   if (logoBox && logoDataUri) {
     const x = logoBox.x + m;
     if (style.logoBacking) {

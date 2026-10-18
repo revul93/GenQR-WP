@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderSvg } from '../src/engine/render';
-import { DEFAULT_STYLE, normalizeStyle } from '../src/engine/style';
+import { colourWarnings, DEFAULT_STYLE, normalizeStyle } from '../src/engine/style';
 import { printPx } from '../src/engine/export';
 
 describe('normalizeStyle', () => {
@@ -31,6 +31,13 @@ describe('renderSvg', () => {
     expect(svg).toContain('fill="#fafafa"');
   });
 
+  it('fills modules with a gradient and keeps a separate corner colour', () => {
+    const svg = renderSvg({ data, style: { ...DEFAULT_STYLE, gradient: { type: 'linear', color: '#ff0000', rotation: 90 }, eyeColor: '#00ff00' } });
+    expect(svg).toContain('<linearGradient id="fg"');
+    expect(svg).toContain('fill="url(#fg)"');
+    expect(svg).toContain('<g fill="#00ff00"');
+  });
+
   it('omits the background when transparent', () => {
     const svg = renderSvg({ data, style: { ...DEFAULT_STYLE, transparentBackground: true } });
     expect(svg).not.toMatch(/<rect[^>]*fill="#ffffff"/);
@@ -46,5 +53,13 @@ describe('printPx', () => {
   it('converts centimetres to 300 dpi pixels, capped', () => {
     expect(printPx(2.54)).toBe(300);
     expect(printPx(100)).toBe(4096);
+  });
+});
+
+describe('colourWarnings', () => {
+  it('warns about light-on-dark and low contrast', () => {
+    expect(colourWarnings(DEFAULT_STYLE)).toEqual([]);
+    expect(colourWarnings({ ...DEFAULT_STYLE, foreground: '#ffffff', background: '#000000' })[0]).toMatch(/lighter than the background/);
+    expect(colourWarnings({ ...DEFAULT_STYLE, foreground: '#dddddd' })[0]).toMatch(/low contrast/);
   });
 });

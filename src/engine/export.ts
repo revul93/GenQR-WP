@@ -88,7 +88,7 @@ export function printQr(svg: string, sizeCm: number, caption: string) {
     `<!doctype html><html><head><meta charset="utf-8"><title>QR code</title><style>` +
       `@page{margin:15mm}body{margin:0;font-family:system-ui,sans-serif;text-align:center}` +
       `svg{width:${sizeCm}cm;height:${sizeCm}cm;display:block;margin:0 auto}p{font-size:10pt;color:#333;word-break:break-all}` +
-      `</style></head><body>${svg}<p>${esc(caption)}</p></body></html>`,
+      `</style></head><body>${svg}${caption ? `<p>${esc(caption)}</p>` : ''}</body></html>`,
   );
   doc.close();
   const win = frame.contentWindow!;

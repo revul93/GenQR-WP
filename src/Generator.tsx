@@ -1,8 +1,14 @@
-import { useRef, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import type { ClientConfig } from './config';
-import { Design } from './Design';
-import { Downloads } from './Downloads';
+import { colourWarnings, type QrStyle } from './engine/style';
+import { ExportDialog, PrintDialog } from './ExportDialog';
+import { Alert, Button, Check, ColourField, CopyButton, Field, Icon, Section, Select, Slider, ToggleGroup } from './ui';
 import { useLogo, useQr } from './useQr';
+
+/**
+ * The public generator. Laid out like the GenQR designer: settings cards on the left,
+ * a sticky preview with the actions on the right.
+ */
 
 interface Link {
   code: string;
@@ -10,27 +16,49 @@ interface Link {
   destination: string;
 }
 
-/** Same destination twice in one visit reuses the link instead of creating another. */
+/** Same address twice in one visit reuses the link instead of creating another. */
 const created = new Map<string, Link>();
 
+const MODULES = [
+  { value: 'square', label: 'Square' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'dots', label: 'Dots' },
+] as const;
+const CORNERS = [
+  { value: 'square', label: 'Square' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'circle', label: 'Circle' },
+] as const;
+
 export function Generator({ config }: { config: ClientConfig }) {
+  const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [link, setLink] = useState<Link | null>(null);
-  const [error, setError] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [style, setStyle] = useState(config.style);
+  const [style, setStyleState] = useState<QrStyle>(config.style);
   const [logoId, setLogoId] = useState(config.logos.some((l) => l.id === config.defaultLogo) ? config.defaultLogo : 0);
-  const [copied, setCopied] = useState(false);
+  const [dialog, setDialog] = useState<'export' | 'print' | null>(null);
   const honeypot = useRef<HTMLInputElement>(null);
 
-  const logo = useLogo(config.logos, logoId);
-  const { svg, svgAt, scan } = useQr(link?.shortUrl ?? '', style, logo);
+  const setStyle = (patch: Partial<QrStyle>) => setStyleState((s) => ({ ...s, ...patch }));
 
-  async function create(e: Event) {
-    e.preventDefault();
+  // Until the link exists, preview a placeholder of the same length: the code looks the same.
+  const placeholder = `${config.shortBase}xxxxxxx`;
+  const logo = useLogo(config.logos, logoId);
+  const { svg, svgAt, scan } = useQr(link?.shortUrl ?? placeholder, style, logo);
+  const svgSrc = useMemo(() => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), [svg]);
+  const warnings = colourWarnings(style);
+  const hasLogo = logoId !== 0;
+  const current = !!link && created.get(url.trim()) === link;
+
+  async function create(e?: Event) {
+    e?.preventDefault();
     const value = url.trim();
     if (!value) return;
-    setError('');
+    setUrlError(null);
+    setNotice(null);
     const cached = created.get(value);
     if (cached) {
       setLink(cached);
@@ -45,11 +73,16 @@ export function Generator({ config }: { config: ClientConfig }) {
         body: JSON.stringify({ url: value, website: honeypot.current?.value ?? '' }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || 'Something went wrong. Please try again.');
+      if (!res.ok) {
+        const message = body.message || 'Something went wrong. Please try again.';
+        if (res.status === 400) setUrlError(message);
+        else setNotice(message);
+        return;
+      }
       created.set(value, body as Link);
       setLink(body as Link);
-    } catch (err) {
-      setError((err as Error).message);
+    } catch {
+      setNotice('Could not reach the server. Check your connection and try again.');
     } finally {
       setBusy(false);
     }
@@ -58,83 +91,226 @@ export function Generator({ config }: { config: ClientConfig }) {
   function reset() {
     setLink(null);
     setUrl('');
-    setError('');
-    setCopied(false);
+    setTitle('');
+    setUrlError(null);
+    setNotice(null);
   }
 
-  async function copy() {
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link.shortUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard blocked (e.g. not https): the link is selectable text anyway.
-    }
-  }
+  const filename = (title.trim() || `qr-${link?.code ?? 'code'}`).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'qr-code';
 
   return (
     <div class="genqr">
-      {config.title && <h2 class="title">{config.title}</h2>}
+      {config.title && <h2 class="h5">{config.title}</h2>}
+      {notice && (
+        <Alert severity="error" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
 
-      {!link && (
-        <form class="create" onSubmit={create} noValidate>
-          <label for="genqr-url">Web address</label>
-          <div class="row nowrap">
-            <input
-              id="genqr-url"
-              type="url"
-              inputMode="url"
-              autoComplete="url"
-              placeholder={config.domains[0] ? `https://${config.domains[0]}/…` : 'https://…'}
-              value={url}
-              onInput={(e) => setUrl((e.target as HTMLInputElement).value)}
-              required
-            />
-            <button type="submit" class="primary" disabled={busy || !url.trim()}>
-              {busy ? 'Creating…' : 'Create QR code'}
-            </button>
-          </div>
-          {/* Honeypot: hidden from people, filled in by some bots. */}
-          <input ref={honeypot} class="hp" type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-          {config.domains.length > 0 && <p class="hint">QR codes can be made for: {config.domains.join(', ')}</p>}
-          {error && (
-            <p class="error" role="alert">
-              {error}
-            </p>
+      <div class="layout">
+        <div class="stack">
+          <Section title="Content">
+            <form class="stack" onSubmit={create} noValidate>
+              <Field label="Title (optional)" helper="Used for the file name and the printed caption.">
+                {(id) => <input id={id} type="text" value={title} maxLength={120} placeholder="e.g. Product brochure — Expo 2026" onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />}
+              </Field>
+              <Field
+                label="Link (URL)"
+                error={!!urlError}
+                helper={
+                  urlError ??
+                  (config.domains.length
+                    ? `The QR code points to a short link, so the site administrator can change its destination later without reprinting. Allowed websites: ${config.domains.join(', ')}.`
+                    : 'QR codes cannot be created yet: no websites have been approved.')
+                }
+              >
+                {(id) => (
+                  <input
+                    id={id}
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    required
+                    maxLength={2000}
+                    placeholder={`https://${/^[\d.]+$/.test(config.domains[0] ?? '') ? '' : 'www.'}${config.domains[0] ?? 'example.com'}/page`}
+                    value={url}
+                    onInput={(e) => {
+                      setUrl((e.target as HTMLInputElement).value);
+                      setUrlError(null);
+                    }}
+                  />
+                )}
+              </Field>
+              {/* Honeypot: hidden from people, filled in by some bots. */}
+              <input ref={honeypot} class="hp" type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+            </form>
+          </Section>
+
+          <Section title="Colours">
+            <div class="row">
+              <ColourField label="Code colour" value={style.foreground} onChange={(v) => setStyle({ foreground: v })} />
+              <ColourField label="Background" value={style.background} disabled={style.transparentBackground} onChange={(v) => setStyle({ background: v })} />
+              <Check label="Transparent background" checked={style.transparentBackground} onChange={(v) => setStyle({ transparentBackground: v })} />
+            </div>
+            <div class="row">
+              <Select
+                label="Gradient"
+                width={160}
+                value={style.gradient?.type ?? 'none'}
+                onChange={(v) =>
+                  setStyle({ gradient: v === 'none' ? null : { type: v as 'linear' | 'radial', color: style.gradient?.color ?? '#0b5394', rotation: style.gradient?.rotation ?? 45 } })
+                }
+                options={[
+                  { value: 'none', label: 'None' },
+                  { value: 'linear', label: 'Linear' },
+                  { value: 'radial', label: 'Radial' },
+                ]}
+              />
+              {style.gradient && (
+                <>
+                  <ColourField label="Gradient to" value={style.gradient.color} onChange={(v) => setStyle({ gradient: { ...style.gradient!, color: v } })} />
+                  {style.gradient.type === 'linear' && (
+                    <Slider
+                      caption={`Angle: ${style.gradient.rotation}°`}
+                      width={180}
+                      min={0}
+                      max={360}
+                      step={15}
+                      value={style.gradient.rotation}
+                      onChange={(v) => setStyle({ gradient: { ...style.gradient!, rotation: v } })}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+            <div class="row">
+              <Check switchStyle label="Different colour for the corners" checked={style.eyeColor != null} onChange={(on) => setStyle({ eyeColor: on ? style.foreground : null })} />
+              {style.eyeColor != null && <ColourField label="Corner colour" value={style.eyeColor} onChange={(v) => setStyle({ eyeColor: v })} />}
+            </div>
+          </Section>
+
+          <Section title="Shapes">
+            <ToggleGroup label="Pattern" value={style.moduleShape} options={[...MODULES]} onChange={(v) => setStyle({ moduleShape: v })} />
+            <ToggleGroup label="Corner frame" value={style.eyeFrameShape} options={[...CORNERS]} onChange={(v) => setStyle({ eyeFrameShape: v })} />
+            <ToggleGroup label="Corner centre" value={style.eyeBallShape} options={[...CORNERS]} onChange={(v) => setStyle({ eyeBallShape: v })} />
+          </Section>
+
+          {config.logos.length > 0 && (
+            <Section title="Logo">
+              <div class="row tiles">
+                <button type="button" class={!hasLogo ? 'tile selected' : 'tile'} title="No logo" aria-label="No logo" aria-pressed={!hasLogo} onClick={() => setLogoId(0)}>
+                  <Icon name="block" class="muted" />
+                </button>
+                {config.logos.map((l) => (
+                  <button type="button" key={l.id} class={logoId === l.id ? 'tile selected' : 'tile'} title={l.name} aria-label={l.name} aria-pressed={logoId === l.id} onClick={() => setLogoId(l.id)}>
+                    <img src={l.url} alt="" />
+                  </button>
+                ))}
+              </div>
+              {hasLogo && (
+                <>
+                  <div class="row">
+                    <Slider caption={`Logo size: ${style.logoSizePercent}% of the code`} min={10} max={30} value={style.logoSizePercent} onChange={(v) => setStyle({ logoSizePercent: v })} />
+                    <Check label="Clear space around the logo" checked={style.logoBacking} onChange={(v) => setStyle({ logoBacking: v })} />
+                  </div>
+                  <p class="caption">With a logo the code automatically uses the highest error correction (H), so it still scans with its centre covered.</p>
+                </>
+              )}
+            </Section>
           )}
-        </form>
-      )}
 
-      {link && (
-        <div class="result">
-          <div class="preview">
-            <div class="qr" style={{ background: style.transparentBackground ? 'repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px' : undefined }} dangerouslySetInnerHTML={{ __html: svg }} />
-            <p class={`scan ${scan}`} aria-live="polite">
-              {scan === 'checking' && 'Checking it scans…'}
-              {scan === 'ok' && '✓ Scans correctly'}
-              {scan === 'fail' && '⚠ May be hard to scan. Try more contrast between the colours or a different logo.'}
-            </p>
-          </div>
-          <div class="panel">
-            <p class="short">
-              <span>Short link</span>
-              <a href={link.shortUrl} target="_blank" rel="noopener">
-                {link.shortUrl}
-              </a>
-              <button type="button" class="small" onClick={copy}>
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </p>
-            <p class="dest">Opens: {link.destination}</p>
-            <Design style={style} onStyle={setStyle} logos={config.logos} logo={logoId} onLogo={setLogoId} />
-            <Downloads svgAt={svgAt} background={style.transparentBackground ? '#ffffff' : style.background} filename={`qr-${link.code}`} caption={link.shortUrl} />
-            <button type="button" class="link" onClick={reset}>
-              Make another QR code
-            </button>
-          </div>
+          <Section title="Advanced">
+            <div class="row">
+              <Select
+                label="Error correction"
+                width={260}
+                value={hasLogo ? 'H' : style.errorCorrection}
+                disabled={hasLogo}
+                onChange={(v) => setStyle({ errorCorrection: v as QrStyle['errorCorrection'] })}
+                helper="Higher survives damage better but makes a denser code."
+                options={[
+                  { value: 'L', label: 'Low (7%)' },
+                  { value: 'M', label: 'Medium (15%)' },
+                  { value: 'Q', label: 'Quartile (25%)' },
+                  { value: 'H', label: 'High (30%)' },
+                ]}
+              />
+              <Slider caption={`Margin: ${style.margin} modules ${style.margin < 2 ? '(may be hard to scan)' : ''}`} min={0} max={10} value={style.margin} onChange={(v) => setStyle({ margin: v })} />
+            </div>
+          </Section>
         </div>
-      )}
+
+        <aside class="side">
+          <div class="paper section stack">
+            <div class={style.transparentBackground ? 'preview checker' : 'preview'}>
+              <img src={svgSrc} alt="QR code preview" />
+            </div>
+            {!link && <p class="caption center">Preview. Create the QR code to get its link.</p>}
+            <div class={`scan ${scan}`} aria-live="polite">
+              {scan === 'checking' && <span class="caption">Checking…</span>}
+              {scan === 'ok' && (
+                <>
+                  <Icon name="check" /> Scan check passed
+                </>
+              )}
+              {scan === 'fail' && (
+                <>
+                  <Icon name="warning" /> Scan check failed — this design may not scan reliably
+                </>
+              )}
+            </div>
+            {link && (
+              <div class="outlined-box">
+                <div class="row nowrap center-items">
+                  <Icon name="link" class="muted" />
+                  <span class="mono grow">{link.shortUrl}</span>
+                  <CopyButton text={link.shortUrl} />
+                  <a class="icon-button" href={link.shortUrl} target="_blank" rel="noopener" title="Open" aria-label="Open">
+                    <Icon name="open" />
+                  </a>
+                </div>
+                <div class="row nowrap center-items top-gap">
+                  <span class="chip success">Active</span>
+                  <span class="caption grow ellipsis" title={link.destination}>
+                    Opens {link.destination}
+                  </span>
+                </div>
+              </div>
+            )}
+            {warnings.map((w) => (
+              <Alert key={w} severity="warning">
+                {w}
+              </Alert>
+            ))}
+            <Button variant="contained" size="large" icon="qr" full onClick={() => create()} disabled={busy || current || !url.trim()}>
+              {busy ? 'Creating…' : current ? 'QR code created' : 'Create QR code'}
+            </Button>
+            <div class="row nowrap">
+              <Button variant="outlined" icon="download" full disabled={!current} title={current ? '' : 'Create the QR code first'} onClick={() => setDialog('export')}>
+                Download
+              </Button>
+              <Button variant="outlined" icon="print" full disabled={!current} title={current ? '' : 'Create the QR code first'} onClick={() => setDialog('print')}>
+                Print
+              </Button>
+            </div>
+            {link && (
+              <Button size="small" icon="add" onClick={reset}>
+                Make another QR code
+              </Button>
+            )}
+            <p class="caption">Always test-scan a printed sample with a phone before mass printing.</p>
+          </div>
+        </aside>
+      </div>
+
+      <ExportDialog
+        open={dialog === 'export'}
+        onClose={() => setDialog(null)}
+        svgAt={svgAt}
+        background={style.transparentBackground ? '#ffffff' : style.background}
+        filename={filename}
+      />
+      <PrintDialog open={dialog === 'print'} onClose={() => setDialog(null)} svgAt={svgAt} defaultCaption={title.trim()} />
     </div>
   );
 }
