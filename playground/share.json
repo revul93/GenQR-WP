@@ -1,0 +1,9 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "preferredVersions": { "php": "8.3", "wp": "latest" },
+  "steps": [
+    { "step": "setSiteOptions", "options": { "blogname": "GenQR", "permalink_structure": "/%postname%/", "timezone_string": "Asia/Riyadh" } },
+    { "step": "activatePlugin", "pluginPath": "genqr/genqr.php" },
+    { "step": "runPHP", "code": "<?php require '/wordpress/wp-load.php'; if ( get_post( 1 ) ) wp_delete_post( 1, true ); if ( get_post( 2 ) ) wp_delete_post( 2, true );" }
+  ]
+}
