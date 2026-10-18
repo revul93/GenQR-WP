@@ -1,6 +1,6 @@
 # GenQR for WordPress — Plan
 
-Status: **Draft v0.1** · 2026-10-18 · for discussion, nothing built yet. Open questions are in section 11.
+Status: **v0.2: agreed** · 2026-10-18 · Phase 1 in progress.
 
 A lightweight sibling of [GenQR](https://github.com/revul93/GenQR): a WordPress plugin for a GoDaddy WordPress site on the company domain. Visitors make branded QR codes for **URLs only**, without logging in. Each code points to a short link on the company domain, and **only the admin** changes where links go.
 
@@ -18,6 +18,11 @@ A lightweight sibling of [GenQR](https://github.com/revul93/GenQR): a WordPress 
 | W6 | Logos | **Set by the admin** (company logos); visitors pick one or none and can't upload their own |
 | W7 | Analytics | A **click count** per link (plus last-clicked time) |
 | W8 | Project | **New repository** (`GenQR-WP`). The QR engine and designer are ported from GenQR; nothing else is carried over. |
+| W9 | Approved domains | **Admin setting**, editable at any time; pre-filled with the site's own domain on activation |
+| W10 | Homepage | A settings button **creates the generator page and makes it the site's homepage**, so visitors land straight on the generator. It can also go on any other page. |
+| W11 | Branding | Title shown to visitors, default **"Jeddah Cables QR Generator"**, editable in settings |
+| W12 | Local testing | **WordPress Playground CLI**: real WordPress in Node, no Docker or hosting needed |
+| W13 | Repository | **github.com/revul93/GenQR-WP** (public) |
 
 ## 2. How it works
 
@@ -75,6 +80,8 @@ The server work is small: storing links, redirecting, the admin screens and sett
 - **Logos:** pick from the WordPress Media Library and mark one as the default.
 - **Default design:** colours and shapes the designer starts with.
 - **Link prefix** (default `go`).
+- **Title** shown above the generator (default "Jeddah Cables QR Generator").
+- **"Use as homepage":** creates a page containing `[genqr]` and sets it as the static front page (Settings → Reading).
 - **Limits:** maximum links per visitor per hour (default 20).
 
 ## 4. Security and abuse protection
@@ -126,16 +133,16 @@ Settings live in one WordPress option (`genqr_settings`).
 | **3. Public generator** | `[genqr]` shortcode, Shadow DOM designer, REST link creation with approved domains, nonce, honeypot and rate limit | Visitors can make codes end to end |
 | **4. Hardening and release** | PHP + Playwright tests in CI, zip release, readme, GoDaddy caching check on a staging page | Installable plugin |
 
-## 10. Testing on your site
+## 10. Testing
 
-1. Install the zip on a **staging copy** or a hidden page first.
-2. Create a code, scan it with a phone, change the destination in wp-admin, and scan again: it should go to the new destination immediately.
-3. If that redirect doesn't change at once, exclude `/go/*` from GoDaddy's cache (see §7).
+**Locally,** with no hosting: `npm run playground` starts WordPress Playground with the plugin mounted and you signed in as admin. Pretty permalinks are on, so `/go/<code>` works.
+
+**On the real site:**
+1. Upload the zip and activate the plugin.
+2. Settings → "Use as homepage".
+3. Create a code, scan it with a phone, change its destination in wp-admin, and scan again: it should go to the new destination immediately.
+4. If the redirect doesn't change at once, exclude `/go/*` from GoDaddy's cache (see §7).
 
 ## 11. Open questions
 
-1. **Approved domains:** which ones? (e.g. `jeddah-cables.com`, `energya.com`, …)
-2. **Does GoDaddy give you a staging site?** Managed WordPress usually does, and it's the best place to test first.
-3. **Which page will hold the generator** (e.g. `/qr`), and should it appear in the site menu?
-4. **Plugin name and branding** shown to visitors (e.g. "Jeddah Cables QR Generator")?
-5. **GitHub repository:** create `revul93/GenQR-WP` (public or private)?
+None at the moment. They will be added here as they come up.
