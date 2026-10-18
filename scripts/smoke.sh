@@ -6,6 +6,9 @@ B="${1:-http://127.0.0.1:9400}"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 post() { curl -s -X POST -H 'Content-Type: application/json' -d "$1" "$B/wp-json/genqr/v1/links"; }
 
+# The first requests after start-up go through Playground's auto-login redirect.
+for _ in 1 2 3; do curl -sL -o /dev/null "$B/" || true; done
+
 config=$(curl -sf "$B/wp-json/genqr/v1/config") || fail "config endpoint"
 grep -qE '"domains":\[[^]]*"127\.0\.0\.1"' <<<"$config" || fail "site domain should be approved by default: $config"
 
