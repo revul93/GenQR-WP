@@ -22,23 +22,73 @@ class GenQR_Settings {
 			'domains'        => array(),
 			'logos'          => array(),    // attachment ids
 			'default_logo'   => 0,          // attachment id, 0 = none
-			// Colours taken from the rainbow ring logo; all keep at least 3:1 contrast on white.
+			// Design used when there are no presets.
 			'style'          => array(
-				'foreground'    => '#d81b60',
+				'foreground'    => '#0b5394',
 				'background'    => '#ffffff',
-				'gradient'      => array(
-					'type'     => 'linear',
-					'color'    => '#1e88e5',
-					'rotation' => 45,
-				),
-				'eyeColor'      => '#6a1b9a',
 				'moduleShape'   => 'rounded',
 				'eyeFrameShape' => 'rounded',
 				'eyeBallShape'  => 'rounded',
 			),
+			'presets'        => self::default_presets(),
+			'default_preset' => 0,          // index into presets; the design the generator starts with
 			'rate_limit'     => 20,         // links per visitor per hour
 			'homepage_id'    => 0,          // page created by "Use as homepage"
 		);
+	}
+
+	/** Ready-made designs from the logo's colours; each keeps at least 3:1 contrast on white. */
+	public static function default_presets() {
+		$preset = static function ( $name, $fg, $gradient, $eye ) {
+			return array(
+				'name'  => $name,
+				'style' => array(
+					'foreground'    => $fg,
+					'background'    => '#ffffff',
+					'gradient'      => $gradient,
+					'eyeColor'      => $eye,
+					'moduleShape'   => 'rounded',
+					'eyeFrameShape' => 'rounded',
+					'eyeBallShape'  => 'rounded',
+				),
+			);
+		};
+		$linear = static fn( $to ) => array( 'type' => 'linear', 'color' => $to, 'rotation' => 45 );
+		return array(
+			$preset( 'Sunset', '#e53935', $linear( '#8e24aa' ), '#b71c1c' ),
+			$preset( 'Ocean', '#00838f', $linear( '#1565c0' ), '#0d47a1' ),
+			$preset( 'Forest', '#2e7d32', $linear( '#00838f' ), '#1b5e20' ),
+			$preset( 'Royal', '#4527a0', array( 'type' => 'radial', 'color' => '#c2185b', 'rotation' => 45 ), '#4527a0' ),
+			$preset( 'Classic blue', '#0b5394', null, null ),
+			$preset( 'Black', '#000000', null, null ),
+		);
+	}
+
+	/** Presets as the admin form posts them: drops unnamed rows, keeps at most 20. */
+	public static function sanitize_presets( $rows ) {
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$name = isset( $row['name'] ) ? mb_substr( sanitize_text_field( $row['name'] ), 0, 40 ) : '';
+			if ( '' === $name || count( $out ) >= 20 ) {
+				continue;
+			}
+			$out[] = array(
+				'name'  => $name,
+				'style' => self::sanitize_style( is_array( $row['style'] ?? null ) ? $row['style'] : array() ),
+			);
+		}
+		return $out;
+	}
+
+	/** The design the generator starts with: the default preset, or the fallback style. */
+	public static function start_style() {
+		$s       = self::get();
+		$presets = $s['presets'];
+		if ( $presets ) {
+			$i = isset( $presets[ (int) $s['default_preset'] ] ) ? (int) $s['default_preset'] : 0;
+			return self::sanitize_style( $presets[ $i ]['style'] );
+		}
+		return self::sanitize_style( $s['style'] );
 	}
 
 	public static function get() {

@@ -309,16 +309,10 @@ class GenQR_Admin {
 
 	public static function page_settings() {
 		self::require_cap();
-		$s     = GenQR_Settings::get();
-		$style = GenQR_Settings::sanitize_style( $s['style'] );
-		$logos = GenQR_Settings::logos();
-		$home  = (int) get_option( 'page_on_front' );
+		$s       = GenQR_Settings::get();
+		$logos   = GenQR_Settings::logos();
+		$home    = (int) get_option( 'page_on_front' );
 		$is_home = $s['homepage_id'] && $home === (int) $s['homepage_id'] && 'page' === get_option( 'show_on_front' );
-		$shapes  = array(
-			'moduleShape'   => array( __( 'Pattern', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'dots' => __( 'Dots', 'genqr' ) ) ),
-			'eyeFrameShape' => array( __( 'Corner frame', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
-			'eyeBallShape'  => array( __( 'Corner centre', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
-		);
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'QR settings', 'genqr' ); ?></h1>
@@ -385,29 +379,25 @@ class GenQR_Admin {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Default design', 'genqr' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Presets', 'genqr' ); ?></th>
 						<td>
-							<label><?php esc_html_e( 'Code colour', 'genqr' ); ?> <input type="color" name="style[foreground]" value="<?php echo esc_attr( $style['foreground'] ); ?>"></label>
-							&nbsp; <label><?php esc_html_e( 'Background', 'genqr' ); ?> <input type="color" name="style[background]" value="<?php echo esc_attr( $style['background'] ); ?>"></label>
-							<p><label><?php esc_html_e( 'Gradient', 'genqr' ); ?>
-								<select name="gradient_type">
-									<option value="" <?php selected( ! $style['gradient'] ); ?>><?php esc_html_e( 'None', 'genqr' ); ?></option>
-									<option value="linear" <?php selected( $style['gradient']['type'] ?? '', 'linear' ); ?>><?php esc_html_e( 'Linear', 'genqr' ); ?></option>
-									<option value="radial" <?php selected( $style['gradient']['type'] ?? '', 'radial' ); ?>><?php esc_html_e( 'Radial', 'genqr' ); ?></option>
-								</select></label>
-								&nbsp; <label><?php esc_html_e( 'to', 'genqr' ); ?> <input type="color" name="gradient_color" value="<?php echo esc_attr( $style['gradient']['color'] ?? '#1e88e5' ); ?>"></label>
-								&nbsp; <label><?php esc_html_e( 'angle', 'genqr' ); ?> <input type="number" name="gradient_rotation" min="0" max="360" step="15" style="width:70px" value="<?php echo (int) ( $style['gradient']['rotation'] ?? 45 ); ?>">°</label></p>
-							<p><label><input type="checkbox" name="eye_color_on" value="1" <?php checked( null !== $style['eyeColor'] ); ?>> <?php esc_html_e( 'Different colour for the corners', 'genqr' ); ?></label>
-								<input type="color" name="eye_color" value="<?php echo esc_attr( $style['eyeColor'] ?? '#6a1b9a' ); ?>"></p>
-							<?php foreach ( $shapes as $key => list( $label, $options ) ) : ?>
-								<p><label><?php echo esc_html( $label ); ?>
-									<select name="style[<?php echo esc_attr( $key ); ?>]">
-										<?php foreach ( $options as $value => $name ) : ?>
-											<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $style[ $key ], $value ); ?>><?php echo esc_html( $name ); ?></option>
-										<?php endforeach; ?>
-									</select></label></p>
-							<?php endforeach; ?>
-							<p class="description"><?php esc_html_e( 'What the generator starts with. Visitors can still change colours and shapes.', 'genqr' ); ?></p>
+							<p class="description" style="margin-bottom:8px"><?php esc_html_e( 'Ready-made designs visitors pick with one click. The default one is what the generator starts with. Colours, gradient and shapes stay editable under "Advanced" in the generator.', 'genqr' ); ?></p>
+							<table class="widefat striped genqr-presets" style="max-width:1100px">
+								<thead><tr>
+									<th style="width:70px"><?php esc_html_e( 'Default', 'genqr' ); ?></th>
+									<th><?php esc_html_e( 'Name', 'genqr' ); ?></th>
+									<th><?php esc_html_e( 'Colours', 'genqr' ); ?></th>
+									<th><?php esc_html_e( 'Shapes', 'genqr' ); ?></th>
+									<th></th>
+								</tr></thead>
+								<tbody id="genqr-preset-rows">
+									<?php foreach ( $s['presets'] as $i => $preset ) : ?>
+										<?php self::preset_row( (string) $i, $preset, (int) $s['default_preset'] === (int) $i ); ?>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+							<template id="genqr-preset-template"><?php self::preset_row( '__i__', array( 'name' => '', 'style' => GenQR_Settings::default_presets()[4]['style'] ), false ); ?></template>
+							<p><button type="button" class="button" id="genqr-add-preset"><?php esc_html_e( 'Add preset', 'genqr' ); ?></button></p>
 						</td>
 					</tr>
 					<tr>
@@ -434,6 +424,28 @@ class GenQR_Admin {
 				const box = e.target.closest( '.genqr-logo' );
 				input.value = ids().filter( ( id ) => id !== box.dataset.id ).join( ',' );
 				box.remove();
+			} );
+			const rows = document.getElementById( 'genqr-preset-rows' );
+			let next = rows.children.length;
+			const paint = ( tr ) => {
+				const v = ( name ) => tr.querySelector( '[name$="' + name + '"]' );
+				const fg = v( '[style][foreground]' ).value;
+				const type = v( '[gradient][type]' ).value;
+				const to = v( '[gradient][color]' ).value;
+				tr.querySelector( '.genqr-swatch' ).style.background = ! type ? fg : type === 'linear' ? 'linear-gradient(' + v( '[gradient][rotation]' ).value + 'deg,' + fg + ',' + to + ')' : 'radial-gradient(' + fg + ',' + to + ')';
+			};
+			[ ...rows.children ].forEach( paint );
+			rows.addEventListener( 'input', ( e ) => paint( e.target.closest( 'tr' ) ) );
+			rows.addEventListener( 'click', ( e ) => {
+				if ( ! e.target.classList.contains( 'genqr-remove-preset' ) ) return;
+				e.target.closest( 'tr' ).remove();
+				if ( ! rows.querySelector( 'input[name="default_preset"]:checked' ) && rows.firstElementChild ) rows.firstElementChild.querySelector( 'input[name="default_preset"]' ).checked = true;
+			} );
+			document.getElementById( 'genqr-add-preset' ).addEventListener( 'click', () => {
+				const html = document.getElementById( 'genqr-preset-template' ).innerHTML.replaceAll( '__i__', 'n' + ( next++ ) );
+				rows.insertAdjacentHTML( 'beforeend', html );
+				paint( rows.lastElementChild );
+				rows.lastElementChild.querySelector( 'input[type=text]' ).focus();
 			} );
 			let frame;
 			document.getElementById( 'genqr-add-logos' ).addEventListener( 'click', () => {
@@ -462,6 +474,50 @@ class GenQR_Admin {
 		<?php
 	}
 
+	/** One editable preset row; $key is the form index ('__i__' in the template). */
+	private static function preset_row( $key, array $preset, $is_default ) {
+		$st     = GenQR_Settings::sanitize_style( $preset['style'] ?? array() );
+		$n      = 'presets[' . $key . ']';
+		$shapes = array(
+			'moduleShape'   => array( __( 'Pattern', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'dots' => __( 'Dots', 'genqr' ) ) ),
+			'eyeFrameShape' => array( __( 'Corner frame', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
+			'eyeBallShape'  => array( __( 'Corner centre', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
+		);
+		$g = $st['gradient'];
+		?>
+		<tr class="genqr-preset">
+			<td><input type="radio" name="default_preset" value="<?php echo esc_attr( $key ); ?>" <?php checked( $is_default ); ?> aria-label="<?php esc_attr_e( 'Default preset', 'genqr' ); ?>"></td>
+			<td><span class="genqr-swatch" style="display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:middle;margin-right:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></span>
+				<input type="text" name="<?php echo esc_attr( $n ); ?>[name]" value="<?php echo esc_attr( $preset['name'] ); ?>" maxlength="40" style="width:140px" placeholder="<?php esc_attr_e( 'Preset name', 'genqr' ); ?>"></td>
+			<td>
+				<label><?php esc_html_e( 'Code', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][foreground]" value="<?php echo esc_attr( $st['foreground'] ); ?>"></label>
+				<label><?php esc_html_e( 'Background', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][background]" value="<?php echo esc_attr( $st['background'] ); ?>"></label><br>
+				<label><?php esc_html_e( 'Gradient', 'genqr' ); ?>
+					<select name="<?php echo esc_attr( $n ); ?>[style][gradient][type]">
+						<option value="" <?php selected( ! $g ); ?>><?php esc_html_e( 'None', 'genqr' ); ?></option>
+						<option value="linear" <?php selected( $g['type'] ?? '', 'linear' ); ?>><?php esc_html_e( 'Linear', 'genqr' ); ?></option>
+						<option value="radial" <?php selected( $g['type'] ?? '', 'radial' ); ?>><?php esc_html_e( 'Radial', 'genqr' ); ?></option>
+					</select></label>
+				<label><?php esc_html_e( 'to', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][gradient][color]" value="<?php echo esc_attr( $g['color'] ?? '#1565c0' ); ?>"></label>
+				<label><input type="number" name="<?php echo esc_attr( $n ); ?>[style][gradient][rotation]" min="0" max="360" step="15" style="width:64px" value="<?php echo (int) ( $g['rotation'] ?? 45 ); ?>">°</label><br>
+				<label><input type="checkbox" name="<?php echo esc_attr( $n ); ?>[eye_on]" value="1" <?php checked( null !== $st['eyeColor'] ); ?>> <?php esc_html_e( 'Corner colour', 'genqr' ); ?></label>
+				<input type="color" name="<?php echo esc_attr( $n ); ?>[style][eyeColor]" value="<?php echo esc_attr( $st['eyeColor'] ?? $st['foreground'] ); ?>">
+			</td>
+			<td>
+				<?php foreach ( $shapes as $k => list( $label, $options ) ) : ?>
+					<label style="display:block;margin-bottom:2px"><?php echo esc_html( $label ); ?>
+						<select name="<?php echo esc_attr( $n ); ?>[style][<?php echo esc_attr( $k ); ?>]">
+							<?php foreach ( $options as $value => $name ) : ?>
+								<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $st[ $k ], $value ); ?>><?php echo esc_html( $name ); ?></option>
+							<?php endforeach; ?>
+						</select></label>
+				<?php endforeach; ?>
+			</td>
+			<td><button type="button" class="button-link button-link-delete genqr-remove-preset"><?php esc_html_e( 'Remove', 'genqr' ); ?></button></td>
+		</tr>
+		<?php
+	}
+
 	public static function handle_save_settings() {
 		check_admin_referer( 'genqr_save_settings' );
 		self::require_cap();
@@ -482,19 +538,28 @@ class GenQR_Admin {
 			'domains'      => GenQR_Settings::sanitize_domains( wp_unslash( $_POST['domains'] ?? '' ) ),
 			'logos'        => $logos,
 			'default_logo' => in_array( $default_logo, $logos, true ) ? $default_logo : 0,
-			'style'        => GenQR_Settings::sanitize_style(
-				array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['style'] ?? array() ) ) + array(
-					'gradient' => array(
-						'type'     => sanitize_key( $_POST['gradient_type'] ?? '' ),
-						'color'    => sanitize_text_field( wp_unslash( $_POST['gradient_color'] ?? '' ) ),
-						'rotation' => (int) ( $_POST['gradient_rotation'] ?? 45 ),
-					),
-					'eyeColor' => empty( $_POST['eye_color_on'] ) ? null : sanitize_text_field( wp_unslash( $_POST['eye_color'] ?? '' ) ),
-				)
-			),
 			'prefix'       => $prefix,
 			'rate_limit'   => max( 1, min( 1000, (int) ( $_POST['rate_limit'] ?? 20 ) ) ),
 		);
+		// Presets: keep the posted order; unnamed rows are dropped, so map the default to its new index.
+		$posted      = is_array( $_POST['presets'] ?? null ) ? wp_unslash( $_POST['presets'] ) : array();
+		$default_key = isset( $_POST['default_preset'] ) ? sanitize_key( wp_unslash( $_POST['default_preset'] ) ) : '';
+		$rows        = array();
+		$default     = 0;
+		foreach ( $posted as $key => $row ) {
+			if ( ! is_array( $row ) || '' === trim( (string) ( $row['name'] ?? '' ) ) ) {
+				continue;
+			}
+			if ( empty( $row['eye_on'] ) ) {
+				unset( $row['style']['eyeColor'] );
+			}
+			if ( (string) $key === $default_key ) {
+				$default = count( $rows );
+			}
+			$rows[] = $row;
+		}
+		$values['presets']        = GenQR_Settings::sanitize_presets( $rows );
+		$values['default_preset'] = $default;
 		// phpcs:enable
 		GenQR_Settings::update( $values );
 		if ( $prefix !== $old['prefix'] ) {

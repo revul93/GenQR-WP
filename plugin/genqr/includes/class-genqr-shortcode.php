@@ -25,7 +25,14 @@ class GenQR_Shortcode {
 			'domains'     => $s['domains'],
 			'logos'       => GenQR_Settings::logos(),
 			'defaultLogo' => (int) $s['default_logo'],
-			'style'       => GenQR_Settings::sanitize_style( $s['style'] ),
+			'style'       => GenQR_Settings::start_style(),
+			'presets'     => array_map(
+				static fn( $p ) => array(
+					'name'  => $p['name'],
+					'style' => GenQR_Settings::sanitize_style( $p['style'] ),
+				),
+				$s['presets']
+			),
 			'publicList'  => (bool) $s['public_list'],
 			'appMode'     => self::$app_mode,
 			'api'         => esc_url_raw( rest_url( GenQR_Rest::NS . '/' ) ),

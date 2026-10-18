@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ClientConfig, PublicLink } from './config';
 import { colourWarnings, type QrStyle } from './engine/style';
-import { ExportDialog, PrintDialog } from './ExportDialog';
-import { PRESETS, swatch } from './presets';
+import { ExportDialog, PrintDialog, QuickDownload } from './ExportDialog';
+import { applyPreset, matchesPreset, swatch } from './presets';
 import { Alert, Button, Check, ColourField, CopyButton, Field, Icon, Section, Select, Slider, ToggleGroup } from './ui';
 import { useLogo, useQr } from './useQr';
 
@@ -37,6 +37,7 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
   const [style, setStyleState] = useState<QrStyle>(config.style);
   const [logoId, setLogoId] = useState(config.logos.some((l) => l.id === config.defaultLogo) ? config.defaultLogo : 0);
   const [dialog, setDialog] = useState<'export' | 'print' | null>(null);
+  const [advanced, setAdvanced] = useState(false);
   const honeypot = useRef<HTMLInputElement>(null);
 
   const setStyle = (patch: Partial<QrStyle>) => setStyleState((s) => ({ ...s, ...patch }));
@@ -159,16 +160,29 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
             </form>
           </Section>
 
-          <Section title="Brand presets">
-            <div class="row presets">
-              {PRESETS.map((p) => (
-                <Button key={p.name} variant="outlined" size="small" onClick={() => setStyle({ ...p.colours, background: '#ffffff', transparentBackground: false })}>
-                  <span class="swatch" style={{ background: swatch(p) }} />
-                  {p.name}
-                </Button>
-              ))}
-            </div>
-          </Section>
+          {config.presets.length > 0 && (
+            <Section title="Presets">
+              <div class="preset-grid" role="radiogroup" aria-label="Presets">
+                {config.presets.map((p) => {
+                  const on = matchesPreset(style, p);
+                  return (
+                    <button key={p.name} type="button" role="radio" aria-checked={on} class={on ? 'preset selected' : 'preset'} onClick={() => setStyleState((st) => applyPreset(st, p))}>
+                      <span class="swatch big" style={{ background: swatch(p) }} />
+                      <span>{p.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
+          <button type="button" class="advanced-toggle" aria-expanded={advanced} onClick={() => setAdvanced((a) => !a)}>
+            <Icon name={advanced ? 'less' : 'more'} />
+            Advanced{advanced ? '' : ': colours, shapes and logo'}
+          </button>
+
+          {advanced && (
+            <>
 
           <Section title="Colours">
             <div class="row">
@@ -242,6 +256,8 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
               )}
             </Section>
           )}
+            </>
+          )}
         </div>
 
         <aside class="side">
@@ -290,13 +306,14 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
               {busy ? 'Creating…' : current ? 'QR code created' : 'Create QR code'}
             </Button>
             <div class="row nowrap">
-              <Button variant="outlined" icon="download" full disabled={!current} title={current ? '' : 'Create the QR code first'} onClick={() => setDialog('export')}>
-                Download
+              <Button variant="outlined" icon="download" full disabled={!current} title={current ? 'Choose format and size' : 'Create the QR code first'} onClick={() => setDialog('export')}>
+                Download…
               </Button>
-              <Button variant="outlined" icon="print" full disabled={!current} title={current ? '' : 'Create the QR code first'} onClick={() => setDialog('print')}>
-                Print
-              </Button>
+              <QuickDownload svgAt={svgAt} background={style.transparentBackground ? '#ffffff' : style.background} filename={filename} disabled={!current} title={current ? undefined : 'Create the QR code first'} />
             </div>
+            <Button variant="outlined" icon="print" full disabled={!current} title={current ? '' : 'Create the QR code first'} onClick={() => setDialog('print')}>
+              Print
+            </Button>
             {link && (
               <Button size="small" icon="add" onClick={onNew}>
                 Make another QR code

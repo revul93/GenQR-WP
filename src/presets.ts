@@ -1,28 +1,28 @@
 import type { QrStyle } from './engine/style';
 
-/**
- * Colour presets taken from the rainbow ring logo. Every colour keeps at least 3:1 contrast
- * on white, so codes stay scannable. Applying a preset changes colours only.
- */
+/** A design the admin defines in Settings → Presets. */
 export interface Preset {
   name: string;
-  colours: Pick<QrStyle, 'foreground' | 'gradient' | 'eyeColor'>;
+  style: QrStyle;
 }
 
-export const PRESETS: Preset[] = [
-  { name: 'Rainbow', colours: { foreground: '#d81b60', gradient: { type: 'linear', color: '#1e88e5', rotation: 45 }, eyeColor: '#6a1b9a' } },
-  { name: 'Sunset', colours: { foreground: '#e53935', gradient: { type: 'linear', color: '#8e24aa', rotation: 45 }, eyeColor: '#b71c1c' } },
-  { name: 'Ocean', colours: { foreground: '#00838f', gradient: { type: 'linear', color: '#1565c0', rotation: 45 }, eyeColor: '#0d47a1' } },
-  { name: 'Forest', colours: { foreground: '#2e7d32', gradient: { type: 'linear', color: '#00838f', rotation: 45 }, eyeColor: '#1b5e20' } },
-  { name: 'Royal', colours: { foreground: '#4527a0', gradient: { type: 'radial', color: '#c2185b', rotation: 45 }, eyeColor: '#4527a0' } },
-  { name: 'Classic blue', colours: { foreground: '#0b5394', gradient: null, eyeColor: null } },
-  { name: 'Black', colours: { foreground: '#000000', gradient: null, eyeColor: null } },
-];
+/** The fields a preset sets; logo size and spacing stay as the visitor left them. */
+const PRESET_KEYS = ['foreground', 'background', 'transparentBackground', 'gradient', 'eyeColor', 'moduleShape', 'eyeFrameShape', 'eyeBallShape'] as const;
+
+export function applyPreset(current: QrStyle, preset: Preset): QrStyle {
+  const next = { ...current };
+  for (const k of PRESET_KEYS) (next as Record<string, unknown>)[k] = preset.style[k];
+  return next;
+}
+
+export function matchesPreset(style: QrStyle, preset: Preset): boolean {
+  return PRESET_KEYS.every((k) => JSON.stringify(style[k]) === JSON.stringify(preset.style[k]));
+}
 
 /** CSS background for a preset's swatch. */
-export function swatch({ colours: c }: Preset): string {
-  if (!c.gradient) return c.foreground;
-  return c.gradient.type === 'linear'
-    ? `linear-gradient(${c.gradient.rotation}deg, ${c.foreground}, ${c.gradient.color})`
-    : `radial-gradient(${c.foreground}, ${c.gradient.color})`;
+export function swatch({ style: s }: Preset): string {
+  if (!s.gradient) return s.foreground;
+  return s.gradient.type === 'linear'
+    ? `linear-gradient(${s.gradient.rotation}deg, ${s.foreground}, ${s.gradient.color})`
+    : `radial-gradient(${s.foreground}, ${s.gradient.color})`;
 }

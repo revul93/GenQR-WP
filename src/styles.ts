@@ -139,8 +139,18 @@ export const CSS = `
 @media (max-width:599.95px){.toolbar{padding:8px 16px;gap:8px;min-height:56px}.app .container{padding:16px}.appbar .nav{margin-left:0}}
 
 /* Presets */
-.presets{gap:8px}
-.swatch{display:inline-block;width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.swatch{display:inline-block;width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);flex-shrink:0}
+.swatch.big{width:40px;height:40px}
+.preset-grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}
+.preset{font:inherit;font-size:.875rem;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border:2px solid var(--divider);border-radius:8px;background:#fff;cursor:pointer;transition:border-color .15s,background-color .15s}
+.preset:hover{border-color:color-mix(in srgb,var(--primary) 40%,transparent)}
+.preset.selected{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 6%,#fff);font-weight:500}
+.preset:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.advanced-toggle{font:inherit;font-size:.875rem;font-weight:500;letter-spacing:.02857em;text-transform:uppercase;color:var(--primary);background:transparent;border:1px dashed color-mix(in srgb,var(--primary) 50%,transparent);border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;width:100%}
+.advanced-toggle:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}
+.advanced-toggle[aria-expanded=true]{border-style:solid}
+.advanced-toggle .icon{width:20px;height:20px}
+.advanced-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 /* All QR codes */
 .space-between{justify-content:space-between}
@@ -154,7 +164,8 @@ export const CSS = `
 .card-title{font-size:1rem;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-body .mono{color:var(--primary);text-decoration:none;font-size:.8125rem}
 .card-body .caption a{color:inherit}
-.card-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+.card-actions .btn{flex:1}
 .muted-text{color:var(--disabled);font-weight:400}
 .icon.small{width:18px;height:18px}
 .row.center{justify-content:center}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { download, exportQr, printQr, type ExportFormat, type SvgAtSize } from './engine/export';
+import { loadPrefs, prefsLabel, savePrefs, useDownloadPrefs } from './downloadPrefs';
 import { Alert, Button, Dialog, Field, Select } from './ui';
 
 const FORMATS = [
@@ -20,22 +21,32 @@ interface Props {
 
 /** Picks a format and size, then downloads the code (made in the browser). */
 export function ExportDialog({ open, onClose, svgAt, background, filename }: Props) {
-  const [format, setFormat] = useState<ExportFormat>('png');
+  const [format, setFormatState] = useState<ExportFormat>('png');
   const spec = FORMATS.find((f) => f.value === format)!;
   const [size, setSize] = useState<number>(spec.size);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Opens on the last options used (PNG 1024 the first time).
   useEffect(() => {
-    if (open) setError(null);
+    if (!open) return;
+    setError(null);
+    const p = loadPrefs();
+    const f = FORMATS.find((x) => x.value === p.format)!;
+    setFormatState(p.format);
+    setSize((f.sizes as readonly number[]).includes(p.size) ? p.size : f.size);
   }, [open]);
-  useEffect(() => setSize(FORMATS.find((f) => f.value === format)!.size), [format]);
+  const setFormat = (f: ExportFormat) => {
+    setFormatState(f);
+    setSize(FORMATS.find((x) => x.value === f)!.size);
+  };
 
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
       download(await exportQr(format, svgAt, size, background), `${filename}.${format}`);
+      savePrefs({ format, size });
       onClose();
     } catch (e) {
       setError((e as Error).message || 'The download failed.');
@@ -107,5 +118,24 @@ export function PrintDialog({ open, onClose, svgAt, defaultCaption }: { open: bo
       </Field>
       <p class="caption">Set the printer to 100% / &quot;actual size&quot; so the code keeps its size.</p>
     </Dialog>
+  );
+}
+
+/** One-click download with the last options used in the Download dialog (PNG 1024 px at first). */
+export function QuickDownload({ svgAt, background, filename, disabled, title, size }: { svgAt: SvgAtSize; background: string; filename: string; disabled?: boolean; title?: string; size?: 'small' }) {
+  const prefs = useDownloadPrefs();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      download(await exportQr(prefs.format, svgAt, prefs.size, background), `${filename}.${prefs.format}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button variant="outlined" size={size} icon="download" full={!size} disabled={disabled || busy} title={title || `Download as ${prefsLabel(prefs)}`} onClick={run}>
+      {busy ? 'Preparing…' : prefsLabel(prefs)}
+    </Button>
   );
 }

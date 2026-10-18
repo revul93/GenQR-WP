@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { ClientConfig, PublicLink } from './config';
 import { renderSvg } from './engine/render';
+import { ExportDialog, QuickDownload } from './ExportDialog';
 import { Alert, Button, CopyButton, Field, Icon } from './ui';
+import { useLogo } from './useQr';
 
 /** Public list of every active QR code: title, short link, destination, clicks. */
 export function CodesList({ config, onOpen }: { config: ClientConfig; onOpen(code: string): void }) {
@@ -87,12 +89,17 @@ export function CodesList({ config, onOpen }: { config: ClientConfig; onOpen(cod
 }
 
 function CodeCard({ item, config, onOpen }: { item: PublicLink; config: ClientConfig; onOpen(): void }) {
-  // Thumbnails use the site's default design (visitors' own designs are not stored).
-  const src = useMemo(() => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(renderSvg({ data: item.shortUrl, style: config.style, sizePx: 160 })), [item.shortUrl, config.style]);
+  // Thumbnails and downloads use the site's default design and logo (visitors' own designs are not stored).
+  const [dialog, setDialog] = useState(false);
+  const logo = useLogo(config.logos, config.defaultLogo);
+  const svgAt = useMemo(() => (sizePx: number) => renderSvg({ data: item.shortUrl, style: config.style, logoDataUri: logo, sizePx }), [item.shortUrl, config.style, logo]);
+  const src = useMemo(() => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgAt(160)), [svgAt]);
+  const filename = (item.title || `qr-${item.code}`).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || `qr-${item.code}`;
+  const background = config.style.transparentBackground ? '#ffffff' : config.style.background;
   const created = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
   return (
     <article class="paper card">
-      <button type="button" class="thumb" onClick={onOpen} aria-label={`Open ${item.title || item.code}`}>
+      <button type="button" class="thumb" onClick={onOpen} title="Open in the designer" aria-label={`Open ${item.title || item.code} in the designer`}>
         <img src={src} alt="" loading="lazy" />
       </button>
       <div class="card-body">
@@ -117,10 +124,12 @@ function CodeCard({ item, config, onOpen }: { item: PublicLink; config: ClientCo
           {created && ` · created ${created}`}
         </p>
         <div class="card-actions">
-          <Button size="small" icon="download" onClick={onOpen}>
-            Open to download
+          <Button variant="outlined" size="small" icon="download" onClick={() => setDialog(true)}>
+            Download…
           </Button>
+          <QuickDownload size="small" svgAt={svgAt} background={background} filename={filename} />
         </div>
+        <ExportDialog open={dialog} onClose={() => setDialog(false)} svgAt={svgAt} background={background} filename={filename} />
       </div>
     </article>
   );
