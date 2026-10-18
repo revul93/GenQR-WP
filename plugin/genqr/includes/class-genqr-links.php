@@ -90,14 +90,15 @@ class GenQR_Links {
 		$params = array();
 		if ( ! empty( $args['search'] ) ) {
 			$like     = '%' . $wpdb->esc_like( $args['search'] ) . '%';
-			$where   .= ' AND (code LIKE %s OR destination LIKE %s)';
+			$where   .= ' AND (code LIKE %s OR title LIKE %s OR destination LIKE %s)';
+			$params[] = $like;
 			$params[] = $like;
 			$params[] = $like;
 		}
 		if ( isset( $args['status'] ) && in_array( $args['status'], array( 'active', 'inactive' ), true ) ) {
 			$where .= ' AND is_active = ' . ( 'active' === $args['status'] ? 1 : 0 );
 		}
-		$orderby = in_array( $args['orderby'] ?? '', array( 'code', 'destination', 'clicks', 'last_click_at', 'created_at' ), true ) ? $args['orderby'] : 'created_at';
+		$orderby = in_array( $args['orderby'] ?? '', array( 'code', 'title', 'destination', 'clicks', 'last_click_at', 'created_at' ), true ) ? $args['orderby'] : 'created_at';
 		$order   = 'asc' === strtolower( $args['order'] ?? '' ) ? 'ASC' : 'DESC';
 		$limit   = max( 1, (int) ( $args['per_page'] ?? 20 ) );
 		$offset  = max( 0, (int) ( $args['offset'] ?? 0 ) );
@@ -126,7 +127,7 @@ class GenQR_Links {
 	}
 
 	/** Creates a link to an already validated destination. Returns the row or WP_Error. */
-	public static function create( $destination, $created_by = null, $ip_hash = null ) {
+	public static function create( $destination, $created_by = null, $ip_hash = null, $title = '' ) {
 		global $wpdb;
 		for ( $attempt = 0; $attempt < 5; $attempt++ ) {
 			$code = self::random_code();
@@ -135,6 +136,7 @@ class GenQR_Links {
 				GenQR_DB::links_table(),
 				array(
 					'code'            => $code,
+					'title'           => self::clean_title( $title ),
 					'destination'     => $destination,
 					'is_active'       => 1,
 					'clicks'          => 0,
@@ -160,6 +162,10 @@ class GenQR_Links {
 		}
 		$data    = array();
 		$history = array();
+		if ( isset( $changes['title'] ) && self::clean_title( $changes['title'] ) !== $link->title ) {
+			$data['title'] = self::clean_title( $changes['title'] );
+			$history[]     = array( 'title', $link->title, $data['title'] );
+		}
 		if ( isset( $changes['destination'] ) && $changes['destination'] !== $link->destination ) {
 			$data['destination'] = $changes['destination'];
 			$history[]           = array( 'destination', $link->destination, $changes['destination'] );
@@ -188,6 +194,22 @@ class GenQR_Links {
 			);
 		}
 		return self::get( $id );
+	}
+
+	public static function clean_title( $title ) {
+		return mb_substr( sanitize_text_field( (string) $title ), 0, 120 );
+	}
+
+	/** What the public "All QR codes" page may show about a link. */
+	public static function to_public( $link ) {
+		return array(
+			'code'        => $link->code,
+			'title'       => $link->title,
+			'shortUrl'    => GenQR_Settings::short_url( $link->code ),
+			'destination' => $link->destination,
+			'clicks'      => (int) $link->clicks,
+			'createdAt'   => gmdate( 'c', strtotime( $link->created_at . ' UTC' ) ),
+		);
 	}
 
 	public static function delete( $id ) {

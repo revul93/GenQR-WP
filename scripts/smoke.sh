@@ -12,7 +12,7 @@ for _ in 1 2 3; do curl -sL -o /dev/null "$B/" || true; done
 config=$(curl -sf "$B/wp-json/genqr/v1/config") || fail "config endpoint"
 grep -qE '"domains":\[[^]]*"127\.0\.0\.1"' <<<"$config" || fail "site domain should be approved by default: $config"
 
-created=$(post '{"url":"127.0.0.1/sample-page"}')
+created=$(post '{"url":"127.0.0.1/sample-page","title":"Smoke <b>test</b>"}')
 code=$(grep -oE '"code":"[a-z0-9]{7}"' <<<"$created" | cut -d'"' -f4) || fail "create: $created"
 echo "created $code"
 
@@ -25,6 +25,9 @@ loc=$(curl -s -o /dev/null -A Mozilla -w '%{http_code} %{redirect_url}' "$B/go/$
 [ "$loc" = "302 https://127.0.0.1/sample-page" ] || fail "redirect: $loc"
 curl -sI -A Mozilla "$B/go/$code" | grep -qi 'cache-control: no-store' || fail "redirect is cacheable"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$B/go/zzzzzzz")" = 404 ] || fail "unknown code should 404"
+
+curl -s "$B/wp-json/genqr/v1/links/$code" | grep -q '"title":"Smoke test"' || fail "title not stored (or not stripped of HTML)"
+curl -s "$B/wp-json/genqr/v1/links?search=smoke" | grep -q "\"code\":\"$code\"" || fail "public list"
 
 curl -s "$B/" >/dev/null
 echo "smoke test passed"

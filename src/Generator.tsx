@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'preact/hooks';
-import type { ClientConfig } from './config';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { ClientConfig, PublicLink } from './config';
 import { colourWarnings, type QrStyle } from './engine/style';
 import { ExportDialog, PrintDialog } from './ExportDialog';
+import { PRESETS, swatch } from './presets';
 import { Alert, Button, Check, ColourField, CopyButton, Field, Icon, Section, Select, Slider, ToggleGroup } from './ui';
 import { useLogo, useQr } from './useQr';
 
@@ -10,11 +11,7 @@ import { useLogo, useQr } from './useQr';
  * a sticky preview with the actions on the right.
  */
 
-interface Link {
-  code: string;
-  shortUrl: string;
-  destination: string;
-}
+type Link = PublicLink;
 
 /** Same address twice in one visit reuses the link instead of creating another. */
 const created = new Map<string, Link>();
@@ -30,7 +27,7 @@ const CORNERS = [
   { value: 'circle', label: 'Circle' },
 ] as const;
 
-export function Generator({ config }: { config: ClientConfig }) {
+export function Generator({ config, openCode, onNew }: { config: ClientConfig; openCode: string | null; onNew(): void }) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [link, setLink] = useState<Link | null>(null);
@@ -43,6 +40,27 @@ export function Generator({ config }: { config: ClientConfig }) {
   const honeypot = useRef<HTMLInputElement>(null);
 
   const setStyle = (patch: Partial<QrStyle>) => setStyleState((s) => ({ ...s, ...patch }));
+
+  // Opened from "All QR codes": load that link, ready to download or print.
+  useEffect(() => {
+    if (!openCode) return;
+    let current = true;
+    fetch(`${config.api}links/${encodeURIComponent(openCode)}`, { credentials: 'same-origin' })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.message || 'Could not load this QR code.');
+        if (!current) return;
+        const l = body as Link;
+        created.set(l.destination, l);
+        setUrl(l.destination);
+        setTitle(l.title || '');
+        setLink(l);
+      })
+      .catch((e) => current && setNotice((e as Error).message));
+    return () => {
+      current = false;
+    };
+  }, [openCode, config.api]);
 
   // Until the link exists, preview a placeholder of the same length: the code looks the same.
   const placeholder = `${config.shortBase}xxxxxxx`;
@@ -70,7 +88,7 @@ export function Generator({ config }: { config: ClientConfig }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ url: value, website: honeypot.current?.value ?? '' }),
+        body: JSON.stringify({ url: value, title: title.trim(), website: honeypot.current?.value ?? '' }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -88,19 +106,11 @@ export function Generator({ config }: { config: ClientConfig }) {
     }
   }
 
-  function reset() {
-    setLink(null);
-    setUrl('');
-    setTitle('');
-    setUrlError(null);
-    setNotice(null);
-  }
-
   const filename = (title.trim() || `qr-${link?.code ?? 'code'}`).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'qr-code';
 
   return (
     <div class="genqr">
-      {config.title && <h2 class="h5">{config.title}</h2>}
+      {config.title && <h2 class="h5">{openCode && link ? link.title || 'QR code' : config.title}</h2>}
       {notice && (
         <Alert severity="error" onClose={() => setNotice(null)}>
           {notice}
@@ -111,8 +121,11 @@ export function Generator({ config }: { config: ClientConfig }) {
         <div class="stack">
           <Section title="Content">
             <form class="stack" onSubmit={create} noValidate>
-              <Field label="Title (optional)" helper="Used for the file name and the printed caption.">
-                {(id) => <input id={id} type="text" value={title} maxLength={120} placeholder="e.g. Product brochure — Expo 2026" onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />}
+              <Field
+                label="Title (optional)"
+                helper={config.publicList ? 'Shown on the "All QR codes" page, and used for the file name and the printed caption.' : 'Used for the file name and the printed caption.'}
+              >
+                {(id) => <input id={id} type="text" value={title} maxLength={120} disabled={current} placeholder="e.g. Product brochure — Expo 2026" onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />}
               </Field>
               <Field
                 label="Link (URL)"
@@ -144,6 +157,17 @@ export function Generator({ config }: { config: ClientConfig }) {
               {/* Honeypot: hidden from people, filled in by some bots. */}
               <input ref={honeypot} class="hp" type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
             </form>
+          </Section>
+
+          <Section title="Brand presets">
+            <div class="row presets">
+              {PRESETS.map((p) => (
+                <Button key={p.name} variant="outlined" size="small" onClick={() => setStyle({ ...p.colours, background: '#ffffff', transparentBackground: false })}>
+                  <span class="swatch" style={{ background: swatch(p) }} />
+                  {p.name}
+                </Button>
+              ))}
+            </div>
           </Section>
 
           <Section title="Colours">
@@ -218,26 +242,6 @@ export function Generator({ config }: { config: ClientConfig }) {
               )}
             </Section>
           )}
-
-          <Section title="Advanced">
-            <div class="row">
-              <Select
-                label="Error correction"
-                width={260}
-                value={hasLogo ? 'H' : style.errorCorrection}
-                disabled={hasLogo}
-                onChange={(v) => setStyle({ errorCorrection: v as QrStyle['errorCorrection'] })}
-                helper="Higher survives damage better but makes a denser code."
-                options={[
-                  { value: 'L', label: 'Low (7%)' },
-                  { value: 'M', label: 'Medium (15%)' },
-                  { value: 'Q', label: 'Quartile (25%)' },
-                  { value: 'H', label: 'High (30%)' },
-                ]}
-              />
-              <Slider caption={`Margin: ${style.margin} modules ${style.margin < 2 ? '(may be hard to scan)' : ''}`} min={0} max={10} value={style.margin} onChange={(v) => setStyle({ margin: v })} />
-            </div>
-          </Section>
         </div>
 
         <aside class="side">
@@ -294,7 +298,7 @@ export function Generator({ config }: { config: ClientConfig }) {
               </Button>
             </div>
             {link && (
-              <Button size="small" icon="add" onClick={reset}>
+              <Button size="small" icon="add" onClick={onNew}>
                 Make another QR code
               </Button>
             )}

@@ -1,12 +1,16 @@
 <?php
 /**
- * [genqr] shortcode: the public QR generator. Renders a mount point; the designer itself
- * is a script (assets/build/genqr.js) that runs in a Shadow DOM so themes cannot restyle it.
+ * [genqr] shortcode: the public QR generator and the "All QR codes" list. Renders a mount
+ * point; the app itself is a script module (assets/build/genqr.js) running in a Shadow DOM
+ * so themes cannot restyle it.
  */
 
 defined( 'ABSPATH' ) || exit;
 
 class GenQR_Shortcode {
+
+	/** True while rendering the plugin's own full-page layout (see GenQR_Page). */
+	public static $app_mode = false;
 
 	public static function init() {
 		add_shortcode( 'genqr', array( __CLASS__, 'render' ) );
@@ -17,10 +21,13 @@ class GenQR_Shortcode {
 		$s = GenQR_Settings::get();
 		return array(
 			'title'       => $s['title'],
+			'brand'       => $s['brand'],
 			'domains'     => $s['domains'],
 			'logos'       => GenQR_Settings::logos(),
 			'defaultLogo' => (int) $s['default_logo'],
 			'style'       => GenQR_Settings::sanitize_style( $s['style'] ),
+			'publicList'  => (bool) $s['public_list'],
+			'appMode'     => self::$app_mode,
 			'api'         => esc_url_raw( rest_url( GenQR_Rest::NS . '/' ) ),
 			'shortBase'   => trailingslashit( home_url( '/' . GenQR_Settings::prefix() ) ),
 		);
@@ -42,8 +49,9 @@ class GenQR_Shortcode {
 		// An ES module: the PDF/Word code is in chunks it imports only when needed.
 		wp_enqueue_script_module( 'genqr', GENQR_URL . 'assets/build/genqr.js', array(), filemtime( $bundle ) );
 
+		// outline:none: some themes outline whatever holds focus, which would frame the whole app.
 		return sprintf(
-			'<div class="genqr-root alignwide" data-config="%s"><noscript>%s</noscript></div>',
+			'<div class="genqr-root alignwide" style="outline:none" data-config="%s"><noscript>%s</noscript></div>',
 			esc_attr( wp_json_encode( $config ) ),
 			esc_html__( 'The QR code generator needs JavaScript.', 'genqr' )
 		);

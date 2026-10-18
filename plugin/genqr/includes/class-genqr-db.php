@@ -29,6 +29,7 @@ class GenQR_DB {
 			"CREATE TABLE {$links} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				code varchar(32) NOT NULL,
+				title varchar(120) NOT NULL DEFAULT '',
 				destination text NOT NULL,
 				is_active tinyint(1) NOT NULL DEFAULT 1,
 				clicks bigint(20) unsigned NOT NULL DEFAULT 0,

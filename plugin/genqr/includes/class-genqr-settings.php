@@ -15,13 +15,23 @@ class GenQR_Settings {
 	public static function defaults() {
 		return array(
 			'title'          => 'Jeddah Cables QR Generator',
+			'brand'          => 'GenQR',     // name in the top bar of the generator page
+			'public_list'    => true,        // "All QR codes" page for visitors
+			'full_page'      => true,        // generator page uses the plugin's own clean layout
 			'prefix'         => 'go',
 			'domains'        => array(),
 			'logos'          => array(),    // attachment ids
 			'default_logo'   => 0,          // attachment id, 0 = none
+			// Colours taken from the rainbow ring logo; all keep at least 3:1 contrast on white.
 			'style'          => array(
-				'foreground'    => '#0b5394',
+				'foreground'    => '#d81b60',
 				'background'    => '#ffffff',
+				'gradient'      => array(
+					'type'     => 'linear',
+					'color'    => '#1e88e5',
+					'rotation' => 45,
+				),
+				'eyeColor'      => '#6a1b9a',
 				'moduleShape'   => 'rounded',
 				'eyeFrameShape' => 'rounded',
 				'eyeBallShape'  => 'rounded',
@@ -93,6 +103,19 @@ class GenQR_Settings {
 			'moduleShape'   => in_array( $style['moduleShape'] ?? '', array( 'square', 'rounded', 'dots' ), true ) ? $style['moduleShape'] : $d['moduleShape'],
 			'eyeFrameShape' => in_array( $style['eyeFrameShape'] ?? '', array( 'square', 'rounded', 'circle' ), true ) ? $style['eyeFrameShape'] : $d['eyeFrameShape'],
 			'eyeBallShape'  => in_array( $style['eyeBallShape'] ?? '', array( 'square', 'rounded', 'circle' ), true ) ? $style['eyeBallShape'] : $d['eyeBallShape'],
+			'eyeColor'      => preg_match( $hex, $style['eyeColor'] ?? '' ) ? strtolower( $style['eyeColor'] ) : null,
+			'gradient'      => self::sanitize_gradient( $style['gradient'] ?? null ),
+		);
+	}
+
+	private static function sanitize_gradient( $g ) {
+		if ( ! is_array( $g ) || ! in_array( $g['type'] ?? '', array( 'linear', 'radial' ), true ) || ! preg_match( '/^#[0-9a-fA-F]{6}$/', $g['color'] ?? '' ) ) {
+			return null;
+		}
+		return array(
+			'type'     => $g['type'],
+			'color'    => strtolower( $g['color'] ),
+			'rotation' => max( 0, min( 360, (int) ( $g['rotation'] ?? 45 ) ) ),
 		);
 	}
 

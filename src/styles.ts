@@ -118,6 +118,47 @@ export const CSS = `
 .alert.success{background:#edf7ed;color:#1e4620}.alert.success>.icon{fill:var(--success)}
 .alert .icon-button{margin:4px -8px 0 0;color:inherit}
 
+/* App shell: top bar like the GenQR web app, or tabs when inside a theme page */
+.app{min-height:100vh;background:#fafafa}
+.appbar{position:sticky;top:0;z-index:10;background:var(--primary);color:#fff;box-shadow:0 2px 4px -1px rgba(0,0,0,.2),0 4px 5px 0 rgba(0,0,0,.14),0 1px 10px 0 rgba(0,0,0,.12)}
+.toolbar{max-width:1200px;margin:0 auto;min-height:64px;padding:0 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-size:1.25rem;font-weight:500;letter-spacing:.0075em}
+.brand .icon{width:28px;height:28px}
+.nav{display:flex;gap:4px;flex-wrap:wrap}
+.nav a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:.875rem;font-weight:500;letter-spacing:.02857em;text-transform:uppercase}
+.nav a .icon{width:20px;height:20px}
+.appbar .nav{margin-left:auto}
+.appbar .nav a{color:rgba(255,255,255,.85)}
+.appbar .nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+.appbar .nav a.active{background:rgba(255,255,255,.18);color:#fff}
+.appbar a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.tabs{border-bottom:1px solid var(--divider);margin-bottom:16px}
+.tabs .nav a{color:var(--text2);border-radius:0;border-bottom:2px solid transparent;padding:10px 16px}
+.tabs .nav a.active{color:var(--primary);border-bottom-color:var(--primary)}
+.app .container{max-width:1200px;margin:0 auto;padding:24px}
+@media (max-width:599.95px){.toolbar{padding:8px 16px;gap:8px;min-height:56px}.app .container{padding:16px}.appbar .nav{margin-left:0}}
+
+/* Presets */
+.presets{gap:8px}
+.swatch{display:inline-block;width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+
+/* All QR codes */
+.space-between{justify-content:space-between}
+.search{width:320px;max-width:100%}
+.empty{text-align:center;color:var(--text2)}
+.cards{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.card{display:flex;flex-direction:column;overflow:hidden}
+.thumb{border:0;background:#fff;padding:16px 16px 0;cursor:pointer;display:block}
+.thumb img{width:100%;max-width:180px;aspect-ratio:1;display:block;margin:0 auto}
+.card-body{padding:12px 16px 8px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.card-title{font-size:1rem;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-body .mono{color:var(--primary);text-decoration:none;font-size:.8125rem}
+.card-body .caption a{color:inherit}
+.card-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.muted-text{color:var(--disabled);font-weight:400}
+.icon.small{width:18px;height:18px}
+.row.center{justify-content:center}
+
 /* Dialog */
 .dialog{border:0;padding:0;border-radius:8px;width:calc(100% - 64px);max-width:444px;max-height:calc(100% - 64px);color:var(--text);font:inherit;box-shadow:0 11px 15px -7px rgba(0,0,0,.2),0 24px 38px 3px rgba(0,0,0,.14),0 9px 46px 8px rgba(0,0,0,.12)}
 .dialog::backdrop{background:rgba(0,0,0,.5)}

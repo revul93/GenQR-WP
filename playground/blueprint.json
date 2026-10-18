@@ -4,6 +4,7 @@
   "preferredVersions": { "php": "8.3", "wp": "latest" },
   "steps": [
     { "step": "setSiteOptions", "options": { "blogname": "GenQR test site", "permalink_structure": "/%postname%/" } },
-    { "step": "activatePlugin", "pluginPath": "genqr/genqr.php" }
+    { "step": "activatePlugin", "pluginPath": "genqr/genqr.php" },
+    { "step": "runPHP", "code": "<?php require '/wordpress/wp-load.php'; wp_delete_post(1, true); wp_delete_post(2, true);" }
   ]
 }

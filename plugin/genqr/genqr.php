@@ -14,7 +14,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'GENQR_VERSION', '0.1.0' );
-define( 'GENQR_DB_VERSION', '1' );
+define( 'GENQR_DB_VERSION', '2' );
 define( 'GENQR_FILE', __FILE__ );
 define( 'GENQR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GENQR_URL', plugin_dir_url( __FILE__ ) );
@@ -25,6 +25,7 @@ require_once GENQR_DIR . 'includes/class-genqr-links.php';
 require_once GENQR_DIR . 'includes/class-genqr-redirect.php';
 require_once GENQR_DIR . 'includes/class-genqr-rest.php';
 require_once GENQR_DIR . 'includes/class-genqr-shortcode.php';
+require_once GENQR_DIR . 'includes/class-genqr-page.php';
 
 if ( is_admin() ) {
 	require_once GENQR_DIR . 'includes/class-genqr-links-table.php';
@@ -38,6 +39,7 @@ add_action( 'plugins_loaded', array( 'GenQR_DB', 'maybe_upgrade' ) );
 GenQR_Redirect::init();
 GenQR_Rest::init();
 GenQR_Shortcode::init();
+GenQR_Page::init();
 if ( is_admin() ) {
 	GenQR_Admin::init();
 }

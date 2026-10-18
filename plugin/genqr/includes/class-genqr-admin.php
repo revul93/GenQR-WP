@@ -212,6 +212,11 @@ class GenQR_Admin {
 						</tr>
 						<?php endif; ?>
 						<tr>
+							<th scope="row"><label for="genqr-link-title"><?php esc_html_e( 'Title', 'genqr' ); ?></label></th>
+							<td><input type="text" id="genqr-link-title" name="link_title" class="regular-text" maxlength="120" value="<?php echo esc_attr( $link ? $link->title : '' ); ?>">
+								<p class="description"><?php esc_html_e( 'Optional. Shown on the public "All QR codes" page.', 'genqr' ); ?></p></td>
+						</tr>
+						<tr>
 							<th scope="row"><label for="genqr-destination"><?php esc_html_e( 'Destination', 'genqr' ); ?></label></th>
 							<td><input type="url" id="genqr-destination" name="destination" class="large-text" required value="<?php echo esc_attr( $link ? $link->destination : '' ); ?>" placeholder="https://www.example.com/page">
 								<p class="description"><?php esc_html_e( 'Any web address. (Visitors can only use the approved domains; administrators can use any.)', 'genqr' ); ?></p></td>
@@ -232,7 +237,7 @@ class GenQR_Admin {
 				</form>
 				<?php if ( $link ) : ?>
 				<div style="width:260px">
-					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
+					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->title ? $link->title : 'qr-' . $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
 				</div>
 				<?php endif; ?>
 			</div>
@@ -252,7 +257,9 @@ class GenQR_Admin {
 						<td><?php echo esc_html( self::format_date( $h->changed_at ) ); ?></td>
 						<td style="word-break:break-all">
 							<?php
-							if ( 'destination' === $h->field ) {
+							if ( 'title' === $h->field ) {
+									echo esc_html( sprintf( /* translators: 1: old title 2: new title */ __( 'Title: "%1$s" → "%2$s"', 'genqr' ), $h->old_value, $h->new_value ) );
+								} elseif ( 'destination' === $h->field ) {
 								echo esc_html( sprintf( /* translators: 1: old URL 2: new URL */ __( 'Destination: %1$s → %2$s', 'genqr' ), $h->old_value, $h->new_value ) );
 							} else {
 								echo 'on' === $h->new_value ? esc_html__( 'Switched on', 'genqr' ) : esc_html__( 'Switched off', 'genqr' );
@@ -283,13 +290,14 @@ class GenQR_Admin {
 			$result = GenQR_Links::update(
 				$id,
 				array(
+					'title'       => isset( $_POST['link_title'] ) ? wp_unslash( $_POST['link_title'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- clean_title()
 					'destination' => $destination,
 					'is_active'   => empty( $_POST['is_active'] ) ? 0 : 1,
 				)
 			);
 			self::back( $return, is_wp_error( $result ) ? 'error-save' : 'saved' );
 		}
-		$link = GenQR_Links::create( $destination, get_current_user_id() );
+		$link = GenQR_Links::create( $destination, get_current_user_id(), null, isset( $_POST['link_title'] ) ? wp_unslash( $_POST['link_title'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- clean_title()
 		if ( is_wp_error( $link ) ) {
 			set_transient( 'genqr_error_' . get_current_user_id(), $link->get_error_message(), 60 );
 			self::back( $return, 'error-create' );
@@ -337,9 +345,21 @@ class GenQR_Admin {
 				<?php wp_nonce_field( 'genqr_save_settings' ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
+						<th scope="row"><label for="genqr-brand"><?php esc_html_e( 'Name in the top bar', 'genqr' ); ?></label></th>
+						<td><input type="text" id="genqr-brand" name="brand" class="regular-text" value="<?php echo esc_attr( $s['brand'] ); ?>">
+							<p class="description"><?php esc_html_e( 'Shown in the top bar of the generator page and in the browser tab.', 'genqr' ); ?></p></td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="genqr-title"><?php esc_html_e( 'Title', 'genqr' ); ?></label></th>
 						<td><input type="text" id="genqr-title" name="title" class="regular-text" value="<?php echo esc_attr( $s['title'] ); ?>">
 							<p class="description"><?php esc_html_e( 'Shown above the generator.', 'genqr' ); ?></p></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Pages', 'genqr' ); ?></th>
+						<td>
+							<p><label><input type="checkbox" name="full_page" value="1" <?php checked( $s['full_page'] ); ?>> <?php esc_html_e( 'Clean layout for the generator page: the top bar only, without the theme\'s header, menu and footer', 'genqr' ); ?></label></p>
+							<p><label><input type="checkbox" name="public_list" value="1" <?php checked( $s['public_list'] ); ?>> <?php esc_html_e( 'Show an "All QR codes" page that lists every active QR code, its title, destination and short link, to everyone', 'genqr' ); ?></label></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="genqr-domains"><?php esc_html_e( 'Approved domains', 'genqr' ); ?></label></th>
@@ -369,6 +389,16 @@ class GenQR_Admin {
 						<td>
 							<label><?php esc_html_e( 'Code colour', 'genqr' ); ?> <input type="color" name="style[foreground]" value="<?php echo esc_attr( $style['foreground'] ); ?>"></label>
 							&nbsp; <label><?php esc_html_e( 'Background', 'genqr' ); ?> <input type="color" name="style[background]" value="<?php echo esc_attr( $style['background'] ); ?>"></label>
+							<p><label><?php esc_html_e( 'Gradient', 'genqr' ); ?>
+								<select name="gradient_type">
+									<option value="" <?php selected( ! $style['gradient'] ); ?>><?php esc_html_e( 'None', 'genqr' ); ?></option>
+									<option value="linear" <?php selected( $style['gradient']['type'] ?? '', 'linear' ); ?>><?php esc_html_e( 'Linear', 'genqr' ); ?></option>
+									<option value="radial" <?php selected( $style['gradient']['type'] ?? '', 'radial' ); ?>><?php esc_html_e( 'Radial', 'genqr' ); ?></option>
+								</select></label>
+								&nbsp; <label><?php esc_html_e( 'to', 'genqr' ); ?> <input type="color" name="gradient_color" value="<?php echo esc_attr( $style['gradient']['color'] ?? '#1e88e5' ); ?>"></label>
+								&nbsp; <label><?php esc_html_e( 'angle', 'genqr' ); ?> <input type="number" name="gradient_rotation" min="0" max="360" step="15" style="width:70px" value="<?php echo (int) ( $style['gradient']['rotation'] ?? 45 ); ?>">°</label></p>
+							<p><label><input type="checkbox" name="eye_color_on" value="1" <?php checked( null !== $style['eyeColor'] ); ?>> <?php esc_html_e( 'Different colour for the corners', 'genqr' ); ?></label>
+								<input type="color" name="eye_color" value="<?php echo esc_attr( $style['eyeColor'] ?? '#6a1b9a' ); ?>"></p>
 							<?php foreach ( $shapes as $key => list( $label, $options ) ) : ?>
 								<p><label><?php echo esc_html( $label ); ?>
 									<select name="style[<?php echo esc_attr( $key ); ?>]">
@@ -446,10 +476,22 @@ class GenQR_Admin {
 		$default_logo = isset( $_POST['default_logo'] ) ? (int) $_POST['default_logo'] : 0;
 		$values = array(
 			'title'        => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ),
+			'brand'        => sanitize_text_field( wp_unslash( $_POST['brand'] ?? '' ) ),
+			'full_page'    => ! empty( $_POST['full_page'] ),
+			'public_list'  => ! empty( $_POST['public_list'] ),
 			'domains'      => GenQR_Settings::sanitize_domains( wp_unslash( $_POST['domains'] ?? '' ) ),
 			'logos'        => $logos,
 			'default_logo' => in_array( $default_logo, $logos, true ) ? $default_logo : 0,
-			'style'        => GenQR_Settings::sanitize_style( array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['style'] ?? array() ) ) ),
+			'style'        => GenQR_Settings::sanitize_style(
+				array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['style'] ?? array() ) ) + array(
+					'gradient' => array(
+						'type'     => sanitize_key( $_POST['gradient_type'] ?? '' ),
+						'color'    => sanitize_text_field( wp_unslash( $_POST['gradient_color'] ?? '' ) ),
+						'rotation' => (int) ( $_POST['gradient_rotation'] ?? 45 ),
+					),
+					'eyeColor' => empty( $_POST['eye_color_on'] ) ? null : sanitize_text_field( wp_unslash( $_POST['eye_color'] ?? '' ) ),
+				)
+			),
 			'prefix'       => $prefix,
 			'rate_limit'   => max( 1, min( 1000, (int) ( $_POST['rate_limit'] ?? 20 ) ) ),
 		);
@@ -473,7 +515,7 @@ class GenQR_Admin {
 				array(
 					'post_type'    => 'page',
 					'post_status'  => 'publish',
-					'post_title'   => $s['title'],
+					'post_title'   => $s['brand'],
 					'post_content' => '<!-- wp:shortcode -->[genqr]<!-- /wp:shortcode -->',
 				)
 			);

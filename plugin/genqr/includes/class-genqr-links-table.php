@@ -109,10 +109,11 @@ class GenQR_Links_Table extends WP_List_Table {
 			esc_html__( 'Delete', 'genqr' )
 		);
 		return sprintf(
-			'<strong><a class="row-title" href="%s">/%s/%s</a></strong>%s',
+			'<strong><a class="row-title" href="%s">/%s/%s</a></strong>%s%s',
 			esc_url( $edit ),
 			esc_html( GenQR_Settings::prefix() ),
 			esc_html( $item->code ),
+			$item->title ? '<br>' . esc_html( $item->title ) : '',
 			$this->row_actions( $actions )
 		);
 	}

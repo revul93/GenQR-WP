@@ -9,12 +9,26 @@ export interface Logo {
 
 export interface ClientConfig {
   title: string;
+  brand: string;
   domains: string[];
   logos: Logo[];
   defaultLogo: number;
   style: QrStyle;
+  publicList: boolean;
+  /** Rendering the plugin's own full page (top bar), rather than inside a theme page. */
+  appMode: boolean;
   api: string;
   shortBase: string;
+}
+
+/** A short link as the REST API returns it. */
+export interface PublicLink {
+  code: string;
+  title: string;
+  shortUrl: string;
+  destination: string;
+  clicks?: number;
+  createdAt?: string;
 }
 
 export function readConfig(el: HTMLElement): ClientConfig {
@@ -26,10 +40,13 @@ export function readConfig(el: HTMLElement): ClientConfig {
   }
   return {
     title: typeof raw.title === 'string' ? raw.title : '',
+    brand: typeof raw.brand === 'string' && raw.brand ? raw.brand : 'GenQR',
     domains: Array.isArray(raw.domains) ? raw.domains.map(String) : [],
     logos: Array.isArray(raw.logos) ? (raw.logos as Logo[]) : [],
     defaultLogo: Number(raw.defaultLogo) || 0,
     style: normalizeStyle((raw.style as object) ?? {}),
+    publicList: raw.publicList === true,
+    appMode: raw.appMode === true,
     api: String(raw.api ?? '/wp-json/genqr/v1/'),
     shortBase: String(raw.shortBase ?? ''),
   };
