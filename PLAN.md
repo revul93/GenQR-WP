@@ -105,7 +105,7 @@ Settings live in one WordPress option (`genqr_settings`).
 
 | Part | Choice |
 |---|---|
-| Plugin | PHP 8.1+ (WordPress 6.4+), WordPress REST API, rewrite rules, `dbDelta`, `WP_List_Table` |
+| Plugin | PHP 8.1+ (WordPress 6.5+, for script modules), WordPress REST API, rewrite rules, `dbDelta`, `WP_List_Table` |
 | Designer | TypeScript + Preact (small) rendered in a Shadow DOM; built with Vite into one JS file |
 | QR engine | GenQR's SVG renderer, ported to the browser: `qrcode` + the same styling code; `jsQR` for the scan check |
 | Exports | Canvas (PNG/JPG), SVG as is, `jsPDF` (PDF), `docx` (Word), all in the browser |

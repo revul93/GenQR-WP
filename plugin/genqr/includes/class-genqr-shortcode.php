@@ -39,7 +39,8 @@ class GenQR_Shortcode {
 				? '<p><strong>GenQR:</strong> ' . esc_html__( 'the generator script is missing. Install the plugin from a release zip, or run "npm run build".', 'genqr' ) . '</p>'
 				: '';
 		}
-		wp_enqueue_script( 'genqr', GENQR_URL . 'assets/build/genqr.js', array(), filemtime( $bundle ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
+		// An ES module: the PDF/Word code is in chunks it imports only when needed.
+		wp_enqueue_script_module( 'genqr', GENQR_URL . 'assets/build/genqr.js', array(), filemtime( $bundle ) );
 
 		return sprintf(
 			'<div class="genqr-root" data-config="%s"><noscript>%s</noscript></div>',

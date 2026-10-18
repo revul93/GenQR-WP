@@ -55,9 +55,8 @@ class GenQR_Admin {
 		}
 		// The QR preview on the edit screen uses the same browser engine as the public generator.
 		$bundle = GENQR_DIR . 'assets/build/genqr-admin.js';
-		if ( file_exists( $bundle ) ) {
-			wp_enqueue_script( 'genqr-admin', GENQR_URL . 'assets/build/genqr-admin.js', array(), filemtime( $bundle ), true );
-			wp_add_inline_script( 'genqr-admin', 'window.GENQR_ADMIN = ' . wp_json_encode( GenQR_Shortcode::client_config() ) . ';', 'before' );
+		if ( file_exists( $bundle ) && false !== strpos( $hook, 'genqr-edit' ) ) {
+			wp_enqueue_script_module( 'genqr-admin', GENQR_URL . 'assets/build/genqr-admin.js', array(), filemtime( $bundle ) );
 		}
 	}
 
@@ -233,7 +232,7 @@ class GenQR_Admin {
 				</form>
 				<?php if ( $link ) : ?>
 				<div style="width:260px">
-					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->code ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
+					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
 				</div>
 				<?php endif; ?>
 			</div>

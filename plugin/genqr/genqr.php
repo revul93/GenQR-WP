@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/revul93/GenQR-WP
  * Description:       Branded QR code generator for visitors (no login) with short links on your domain that only administrators can change. Add the [genqr] shortcode to a page.
  * Version:           0.1.0
- * Requires at least: 6.4
+ * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            GenQR
  * License:           GPL-2.0-or-later
