@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: PHP syntax check (8.1 and 8.4)
+        run: |
+          for v in 8.1 8.4; do
+            docker run --rm -v "$PWD/plugin:/p" php:$v-cli sh -c 'find /p -name "*.php" -print0 | xargs -0 -n1 php -l'
+          done
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Smoke test in WordPress Playground
+        run: |
+          npm run playground > playground.log 2>&1 &
+          for i in $(seq 1 180); do grep -q 'Ready!' playground.log && break; sleep 1; done
+          cat playground.log
+          bash scripts/smoke.sh http://127.0.0.1:9400
+
+      - name: Package plugin zip
+        run: |
+          mkdir -p dist
+          version=$(grep -oP '^\s*\*\s*Version:\s*\K\S+' plugin/genqr/genqr.php)
+          (cd plugin && zip -qr "../dist/genqr-$version.zip" genqr -x '*.DS_Store')
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genqr-plugin
+          path: dist/*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: genqr-plugin
+          path: dist
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
