@@ -1,0 +1,12 @@
+{
+  "name": "genqr-wp",
+  "private": true,
+  "description": "GenQR WordPress plugin: QR codes and short links",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "playground": "wp-playground-cli server --port=9400 --mount=./plugin/genqr:/wordpress/wp-content/plugins/genqr --blueprint=./playground/blueprint.json --login"
+  },
+  "devDependencies": {
+    "@wp-playground/cli": "3.1.58"
+  }
+}

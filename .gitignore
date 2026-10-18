@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.zip
+# built browser bundles are produced by `npm run build`
+plugin/genqr/assets/build/
+.playground/

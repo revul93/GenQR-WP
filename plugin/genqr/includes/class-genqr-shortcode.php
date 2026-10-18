@@ -1,0 +1,50 @@
+<?php
+/**
+ * [genqr] shortcode: the public QR generator. Renders a mount point; the designer itself
+ * is a script (assets/build/genqr.js) that runs in a Shadow DOM so themes cannot restyle it.
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+class GenQR_Shortcode {
+
+	public static function init() {
+		add_shortcode( 'genqr', array( __CLASS__, 'render' ) );
+	}
+
+	/** Everything the browser needs; also served by GET /genqr/v1/config. */
+	public static function client_config() {
+		$s = GenQR_Settings::get();
+		return array(
+			'title'       => $s['title'],
+			'domains'     => $s['domains'],
+			'logos'       => GenQR_Settings::logos(),
+			'defaultLogo' => (int) $s['default_logo'],
+			'style'       => GenQR_Settings::sanitize_style( $s['style'] ),
+			'api'         => esc_url_raw( rest_url( GenQR_Rest::NS . '/' ) ),
+			'shortBase'   => trailingslashit( home_url( '/' . GenQR_Settings::prefix() ) ),
+		);
+	}
+
+	public static function render( $atts = array() ) {
+		$atts   = shortcode_atts( array( 'title' => '' ), $atts, 'genqr' );
+		$config = self::client_config();
+		if ( '' !== $atts['title'] ) {
+			$config['title'] = sanitize_text_field( $atts['title'] );
+		}
+
+		$bundle = GENQR_DIR . 'assets/build/genqr.js';
+		if ( ! file_exists( $bundle ) ) {
+			return current_user_can( 'manage_options' )
+				? '<p><strong>GenQR:</strong> ' . esc_html__( 'the generator script is missing. Install the plugin from a release zip, or run "npm run build".', 'genqr' ) . '</p>'
+				: '';
+		}
+		wp_enqueue_script( 'genqr', GENQR_URL . 'assets/build/genqr.js', array(), filemtime( $bundle ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
+
+		return sprintf(
+			'<div class="genqr-root" data-config="%s"><noscript>%s</noscript></div>',
+			esc_attr( wp_json_encode( $config ) ),
+			esc_html__( 'The QR code generator needs JavaScript.', 'genqr' )
+		);
+	}
+}
