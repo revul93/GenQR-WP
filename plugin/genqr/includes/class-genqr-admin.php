@@ -312,109 +312,207 @@ class GenQR_Admin {
 		$s       = GenQR_Settings::get();
 		$logos   = GenQR_Settings::logos();
 		$home    = (int) get_option( 'page_on_front' );
-		$is_home = $s['homepage_id'] && $home === (int) $s['homepage_id'] && 'page' === get_option( 'show_on_front' );
+		$page    = $s['homepage_id'] ? get_post( (int) $s['homepage_id'] ) : null;
+		$is_home = $page && $home === (int) $page->ID && 'page' === get_option( 'show_on_front' );
+		$tabs    = array(
+			'general'  => __( 'General', 'genqr' ),
+			'visitors' => __( 'Visitors', 'genqr' ),
+			'logos'    => __( 'Logos', 'genqr' ),
+			'presets'  => __( 'Presets', 'genqr' ),
+			'links'    => __( 'Short links', 'genqr' ),
+		);
 		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'QR settings', 'genqr' ); ?></h1>
+		<div class="wrap genqr-settings">
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'QR settings', 'genqr' ); ?></h1>
+			<?php if ( $page && 'publish' === $page->post_status ) : ?>
+				<a href="<?php echo esc_url( get_permalink( $page ) ); ?>" class="page-title-action" target="_blank"><?php esc_html_e( 'View generator page', 'genqr' ); ?></a>
+			<?php endif; ?>
+			<hr class="wp-header-end">
 
-			<h2><?php esc_html_e( 'Generator page', 'genqr' ); ?></h2>
-			<p>
-				<?php esc_html_e( 'Add the shortcode [genqr] to any page, or let the plugin create the page and make it the homepage.', 'genqr' ); ?>
-				<?php if ( $s['homepage_id'] && get_post( (int) $s['homepage_id'] ) ) : ?>
-					<a href="<?php echo esc_url( get_permalink( (int) $s['homepage_id'] ) ); ?>" target="_blank"><?php esc_html_e( 'View the generator page', 'genqr' ); ?></a>
-				<?php endif; ?>
-			</p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<nav class="nav-tab-wrapper genqr-tabs" aria-label="<?php esc_attr_e( 'Settings sections', 'genqr' ); ?>">
+				<?php foreach ( $tabs as $id => $label ) : ?>
+					<a href="#<?php echo esc_attr( $id ); ?>" class="nav-tab" data-tab="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $label ); ?></a>
+				<?php endforeach; ?>
+			</nav>
+
+			<!-- Separate form for the homepage button (forms cannot be nested). -->
+			<form id="genqr-homepage-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="genqr_homepage">
 				<?php wp_nonce_field( 'genqr_homepage' ); ?>
-				<?php if ( $is_home ) : ?>
-					<p><strong><?php esc_html_e( 'The generator is the site\'s homepage.', 'genqr' ); ?></strong></p>
-				<?php else : ?>
-					<?php submit_button( __( 'Use the QR generator as the homepage', 'genqr' ), 'secondary', 'submit', false ); ?>
-				<?php endif; ?>
 			</form>
 
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="genqr-settings-form">
 				<input type="hidden" name="action" value="genqr_save_settings">
 				<?php wp_nonce_field( 'genqr_save_settings' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="genqr-brand"><?php esc_html_e( 'Name in the top bar', 'genqr' ); ?></label></th>
-						<td><input type="text" id="genqr-brand" name="brand" class="regular-text" value="<?php echo esc_attr( $s['brand'] ); ?>">
-							<p class="description"><?php esc_html_e( 'Shown in the top bar of the generator page and in the browser tab.', 'genqr' ); ?></p></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="genqr-title"><?php esc_html_e( 'Title', 'genqr' ); ?></label></th>
-						<td><input type="text" id="genqr-title" name="title" class="regular-text" value="<?php echo esc_attr( $s['title'] ); ?>">
-							<p class="description"><?php esc_html_e( 'Shown above the generator.', 'genqr' ); ?></p></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Pages', 'genqr' ); ?></th>
-						<td>
-							<p><label><input type="checkbox" name="full_page" value="1" <?php checked( $s['full_page'] ); ?>> <?php esc_html_e( 'Clean layout for the generator page: the top bar only, without the theme\'s header, menu and footer', 'genqr' ); ?></label></p>
-							<p><label><input type="checkbox" name="public_list" value="1" <?php checked( $s['public_list'] ); ?>> <?php esc_html_e( 'Show an "All QR codes" page that lists every active QR code, its title, destination and short link, to everyone', 'genqr' ); ?></label></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="genqr-domains"><?php esc_html_e( 'Approved domains', 'genqr' ); ?></label></th>
-						<td><textarea id="genqr-domains" name="domains" rows="4" class="large-text code" placeholder="jeddah-cables.com"><?php echo esc_textarea( implode( "\n", $s['domains'] ) ); ?></textarea>
-							<p class="description"><?php esc_html_e( 'One per line. Visitors can only make QR codes for these websites (subdomains included). You can change this any time.', 'genqr' ); ?></p></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Logos', 'genqr' ); ?></th>
-						<td>
-							<input type="hidden" id="genqr-logos" name="logos" value="<?php echo esc_attr( implode( ',', wp_list_pluck( $logos, 'id' ) ) ); ?>">
-							<div id="genqr-logo-list" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">
-								<?php foreach ( $logos as $logo ) : ?>
-								<label class="genqr-logo" data-id="<?php echo (int) $logo['id']; ?>" style="border:1px solid #dcdcde;border-radius:4px;padding:8px;text-align:center;width:110px;background:#fff">
-									<img src="<?php echo esc_url( $logo['url'] ); ?>" alt="" style="max-width:90px;max-height:60px;display:block;margin:0 auto 6px">
-									<input type="radio" name="default_logo" value="<?php echo (int) $logo['id']; ?>" <?php checked( (int) $s['default_logo'], (int) $logo['id'] ); ?>> <?php esc_html_e( 'Default', 'genqr' ); ?>
-									<br><a href="#" class="genqr-remove-logo"><?php esc_html_e( 'Remove', 'genqr' ); ?></a>
+
+				<section class="genqr-panel" data-panel="general">
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'Generator page', 'genqr' ); ?></h2>
+						<?php if ( $is_home ) : ?>
+							<p class="genqr-status ok"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e( 'The QR generator is the site\'s homepage.', 'genqr' ); ?></p>
+						<?php else : ?>
+							<p><?php esc_html_e( 'Create the generator page and make it the homepage in one click, or add the shortcode [genqr] to any page yourself.', 'genqr' ); ?></p>
+							<p><button type="submit" form="genqr-homepage-form" class="button button-secondary"><?php esc_html_e( 'Use the QR generator as the homepage', 'genqr' ); ?></button></p>
+						<?php endif; ?>
+						<div class="genqr-field">
+							<label class="genqr-check"><input type="checkbox" name="full_page" value="1" <?php checked( $s['full_page'] ); ?>> <?php esc_html_e( 'Clean layout', 'genqr' ); ?></label>
+							<p class="description"><?php esc_html_e( 'The generator page shows only the top bar and the generator, without the theme\'s header, menu and footer.', 'genqr' ); ?></p>
+						</div>
+					</div>
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'Names', 'genqr' ); ?></h2>
+						<div class="genqr-field">
+							<label for="genqr-brand"><?php esc_html_e( 'Name in the top bar', 'genqr' ); ?></label>
+							<input type="text" id="genqr-brand" name="brand" class="regular-text" value="<?php echo esc_attr( $s['brand'] ); ?>">
+							<p class="description"><?php esc_html_e( 'Also shown in the browser tab.', 'genqr' ); ?></p>
+						</div>
+						<div class="genqr-field">
+							<label for="genqr-title"><?php esc_html_e( 'Title above the generator', 'genqr' ); ?></label>
+							<input type="text" id="genqr-title" name="title" class="regular-text" value="<?php echo esc_attr( $s['title'] ); ?>">
+						</div>
+					</div>
+				</section>
+
+				<section class="genqr-panel" data-panel="visitors">
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'What visitors can create', 'genqr' ); ?></h2>
+						<div class="genqr-field">
+							<label for="genqr-domains"><?php esc_html_e( 'Approved domains', 'genqr' ); ?></label>
+							<textarea id="genqr-domains" name="domains" rows="5" class="large-text code" placeholder="jeddah-cables.com"><?php echo esc_textarea( implode( "\n", $s['domains'] ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'One per line. Visitors can only make QR codes for these websites (subdomains included). Administrators can link anywhere.', 'genqr' ); ?></p>
+						</div>
+						<div class="genqr-field">
+							<label for="genqr-rate"><?php esc_html_e( 'Limit per visitor', 'genqr' ); ?></label>
+							<span><input type="number" id="genqr-rate" name="rate_limit" min="1" max="1000" value="<?php echo (int) $s['rate_limit']; ?>" class="small-text"> <?php esc_html_e( 'new QR codes per hour', 'genqr' ); ?></span>
+						</div>
+					</div>
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'All QR codes page', 'genqr' ); ?></h2>
+						<div class="genqr-field">
+							<label class="genqr-check"><input type="checkbox" name="public_list" value="1" <?php checked( $s['public_list'] ); ?>> <?php esc_html_e( 'Show the "All QR codes" page', 'genqr' ); ?></label>
+							<p class="description"><?php esc_html_e( 'Anyone can browse and search every active QR code: its title, short link and destination, and download it again.', 'genqr' ); ?></p>
+						</div>
+					</div>
+				</section>
+
+				<section class="genqr-panel" data-panel="logos">
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'Logos', 'genqr' ); ?></h2>
+						<p class="description"><?php esc_html_e( 'Visitors can put one of these logos in the centre of their QR code. Square images with a transparent background work best.', 'genqr' ); ?></p>
+						<input type="hidden" id="genqr-logos" name="logos" value="<?php echo esc_attr( implode( ',', wp_list_pluck( $logos, 'id' ) ) ); ?>">
+						<div id="genqr-logo-list" class="genqr-grid genqr-logo-grid">
+							<label class="genqr-tile genqr-logo-none">
+								<span class="genqr-tile-img"><span class="dashicons dashicons-dismiss"></span></span>
+								<span><input type="radio" name="default_logo" value="0" <?php checked( (int) $s['default_logo'], 0 ); ?>> <?php esc_html_e( 'No logo by default', 'genqr' ); ?></span>
+							</label>
+							<?php foreach ( $logos as $logo ) : ?>
+								<label class="genqr-tile genqr-logo" data-id="<?php echo (int) $logo['id']; ?>">
+									<span class="genqr-tile-img"><img src="<?php echo esc_url( $logo['url'] ); ?>" alt=""></span>
+									<span class="genqr-tile-name"><?php echo esc_html( $logo['name'] ); ?></span>
+									<span><input type="radio" name="default_logo" value="<?php echo (int) $logo['id']; ?>" <?php checked( (int) $s['default_logo'], (int) $logo['id'] ); ?>> <?php esc_html_e( 'Default', 'genqr' ); ?></span>
+									<button type="button" class="button-link button-link-delete genqr-remove-logo"><?php esc_html_e( 'Remove', 'genqr' ); ?></button>
 								</label>
-								<?php endforeach; ?>
-							</div>
-							<label><input type="radio" name="default_logo" value="0" <?php checked( (int) $s['default_logo'], 0 ); ?>> <?php esc_html_e( 'No logo by default', 'genqr' ); ?></label>
-							<p><button type="button" class="button" id="genqr-add-logos"><?php esc_html_e( 'Add logos', 'genqr' ); ?></button></p>
-							<p class="description"><?php esc_html_e( 'Visitors can choose one of these logos (or none). Square images with a transparent background work best.', 'genqr' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Presets', 'genqr' ); ?></th>
-						<td>
-							<p class="description" style="margin-bottom:8px"><?php esc_html_e( 'Ready-made designs visitors pick with one click. The default one is what the generator starts with. Colours, gradient and shapes stay editable under "Advanced" in the generator.', 'genqr' ); ?></p>
-							<table class="widefat striped genqr-presets" style="max-width:1100px">
-								<thead><tr>
-									<th style="width:70px"><?php esc_html_e( 'Default', 'genqr' ); ?></th>
-									<th><?php esc_html_e( 'Name', 'genqr' ); ?></th>
-									<th><?php esc_html_e( 'Colours', 'genqr' ); ?></th>
-									<th><?php esc_html_e( 'Shapes', 'genqr' ); ?></th>
-									<th></th>
-								</tr></thead>
-								<tbody id="genqr-preset-rows">
-									<?php foreach ( $s['presets'] as $i => $preset ) : ?>
-										<?php self::preset_row( (string) $i, $preset, (int) $s['default_preset'] === (int) $i ); ?>
-									<?php endforeach; ?>
-								</tbody>
-							</table>
-							<template id="genqr-preset-template"><?php self::preset_row( '__i__', array( 'name' => '', 'style' => GenQR_Settings::default_presets()[0]['style'] ), false ); ?></template>
-							<p><button type="button" class="button" id="genqr-add-preset"><?php esc_html_e( 'Add preset', 'genqr' ); ?></button></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="genqr-prefix"><?php esc_html_e( 'Link prefix', 'genqr' ); ?></label></th>
-						<td><code><?php echo esc_html( home_url( '/' ) ); ?></code><input type="text" id="genqr-prefix" name="prefix" value="<?php echo esc_attr( $s['prefix'] ); ?>" style="width:120px"><code>/abc2345</code>
-							<p class="description"><strong><?php esc_html_e( 'Printed QR codes contain this prefix. Changing it breaks every code already printed.', 'genqr' ); ?></strong></p></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="genqr-rate"><?php esc_html_e( 'Limit per visitor', 'genqr' ); ?></label></th>
-						<td><input type="number" id="genqr-rate" name="rate_limit" min="1" max="1000" value="<?php echo (int) $s['rate_limit']; ?>" style="width:90px"> <?php esc_html_e( 'new QR codes per hour', 'genqr' ); ?></td>
-					</tr>
-				</table>
-				<?php submit_button( __( 'Save settings', 'genqr' ) ); ?>
+							<?php endforeach; ?>
+						</div>
+						<p><button type="button" class="button" id="genqr-add-logos"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e( 'Add logos', 'genqr' ); ?></button></p>
+					</div>
+				</section>
+
+				<section class="genqr-panel" data-panel="presets">
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'Presets', 'genqr' ); ?></h2>
+						<p class="description"><?php esc_html_e( 'Ready-made designs visitors pick with one click. The generator starts with the default one. Visitors can still change colours and shapes under "Advanced".', 'genqr' ); ?></p>
+						<div id="genqr-preset-rows" class="genqr-grid genqr-preset-grid">
+							<?php foreach ( $s['presets'] as $i => $preset ) : ?>
+								<?php self::preset_card( (string) $i, $preset, (int) $s['default_preset'] === (int) $i ); ?>
+							<?php endforeach; ?>
+						</div>
+						<template id="genqr-preset-template"><?php self::preset_card( '__i__', array( 'name' => '', 'style' => GenQR_Settings::default_presets()[0]['style'] ), false ); ?></template>
+						<p><button type="button" class="button" id="genqr-add-preset"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e( 'Add preset', 'genqr' ); ?></button></p>
+					</div>
+				</section>
+
+				<section class="genqr-panel" data-panel="links">
+					<div class="genqr-card">
+						<h2><?php esc_html_e( 'Short link address', 'genqr' ); ?></h2>
+						<div class="genqr-field">
+							<label for="genqr-prefix"><?php esc_html_e( 'Link prefix', 'genqr' ); ?></label>
+							<span class="genqr-prefix"><code><?php echo esc_html( home_url( '/' ) ); ?></code><input type="text" id="genqr-prefix" name="prefix" value="<?php echo esc_attr( $s['prefix'] ); ?>" class="small-text"><code>/abc2345</code></span>
+						</div>
+						<div class="notice notice-warning inline"><p><?php esc_html_e( 'Printed QR codes contain this prefix. Changing it breaks every QR code already printed.', 'genqr' ); ?></p></div>
+						<p class="description">
+							<?php
+							echo get_option( 'permalink_structure' )
+								? esc_html__( 'Permalinks: OK (short links need anything except "Plain").', 'genqr' )
+								: esc_html__( 'Permalinks are set to "Plain": short links will not work until you change Settings → Permalinks.', 'genqr' );
+							?>
+						</p>
+					</div>
+				</section>
+
+				<div class="genqr-savebar">
+					<?php submit_button( __( 'Save settings', 'genqr' ), 'primary', 'submit', false ); ?>
+					<span class="description"><?php esc_html_e( 'Saves every tab.', 'genqr' ); ?></span>
+				</div>
 			</form>
 		</div>
+		<style>
+		.genqr-settings .genqr-tabs{margin-bottom:16px}
+		.genqr-settings .genqr-panel{display:none;max-width:1100px}
+		.genqr-settings .genqr-panel.active{display:block}
+		.genqr-card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px 20px;margin-bottom:16px;box-shadow:0 1px 1px rgba(0,0,0,.04)}
+		.genqr-card h2{margin:0 0 12px;font-size:15px}
+		.genqr-card>.description{margin:-4px 0 14px}
+		.genqr-field{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}
+		.genqr-field:last-child{margin-bottom:0}
+		.genqr-field>label:not(.genqr-check){font-weight:600}
+		.genqr-field .description{margin:0}
+		.genqr-check{font-weight:600}
+		.genqr-status.ok{color:#00a32a;font-weight:600;display:flex;align-items:center;gap:6px}
+		.genqr-grid{display:grid;gap:12px;margin-bottom:12px}
+		.genqr-logo-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+		.genqr-tile{border:1px solid #dcdcde;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:#fff}
+		.genqr-tile-img{height:72px;display:grid;place-items:center}
+		.genqr-tile-img img{max-width:110px;max-height:72px}
+		.genqr-tile-img .dashicons{font-size:40px;width:40px;height:40px;color:#c3c4c7}
+		.genqr-tile-name{font-size:12px;color:#646970;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+		.genqr-preset-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+		.genqr-preset{border:1px solid #dcdcde;border-radius:8px;background:#fff;display:flex;flex-direction:column}
+		.genqr-preset.is-default{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1}
+		.genqr-preset-head{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #f0f0f1}
+		.genqr-swatch{width:36px;height:36px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+		.genqr-preset-head input[type=text]{flex:1;min-width:0;font-weight:600}
+		.genqr-preset-body{padding:12px;display:grid;grid-template-columns:110px 1fr;gap:8px 10px;align-items:center}
+		.genqr-preset-body>span{color:#50575e}
+		.genqr-preset-body .genqr-inline{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+		.genqr-preset-body select{min-width:0;max-width:100%}
+		.genqr-preset-body input[type=number]{width:64px}
+		.genqr-preset-foot{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-top:1px solid #f0f0f1;background:#f6f7f7;border-radius:0 0 8px 8px}
+		.genqr-prefix{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+		.genqr-prefix input{width:90px}
+		.genqr-savebar{position:sticky;bottom:0;z-index:5;background:#f0f0f1;border-top:1px solid #dcdcde;padding:12px 0;display:flex;align-items:center;gap:12px;max-width:1100px}
+		#genqr-add-logos .dashicons,#genqr-add-preset .dashicons{vertical-align:middle;margin-top:-2px}
+		</style>
 		<script>
 		( function () {
+			// Tabs: one form, panels shown one at a time; the open tab survives saving.
+			const tabs = document.querySelectorAll( '.genqr-tabs .nav-tab' );
+			const show = ( id ) => {
+				if ( ! document.querySelector( '[data-panel="' + id + '"]' ) ) id = 'general';
+				tabs.forEach( ( t ) => t.classList.toggle( 'nav-tab-active', t.dataset.tab === id ) );
+				document.querySelectorAll( '.genqr-panel' ).forEach( ( p ) => p.classList.toggle( 'active', p.dataset.panel === id ) );
+				try { sessionStorage.setItem( 'genqr-tab', id ); } catch ( e ) {}
+			};
+			tabs.forEach( ( t ) => t.addEventListener( 'click', ( e ) => {
+				e.preventDefault();
+				history.replaceState( null, '', '#' + t.dataset.tab );
+				show( t.dataset.tab );
+			} ) );
+			let start = location.hash.slice( 1 );
+			try { start = start || sessionStorage.getItem( 'genqr-tab' ) || ''; } catch ( e ) {}
+			show( start );
+
+			// Logos.
 			const input = document.getElementById( 'genqr-logos' );
 			const list = document.getElementById( 'genqr-logo-list' );
 			const ids = () => input.value.split( ',' ).filter( Boolean );
@@ -422,30 +520,10 @@ class GenQR_Admin {
 				if ( ! e.target.classList.contains( 'genqr-remove-logo' ) ) return;
 				e.preventDefault();
 				const box = e.target.closest( '.genqr-logo' );
+				const wasDefault = box.querySelector( 'input[type=radio]' ).checked;
 				input.value = ids().filter( ( id ) => id !== box.dataset.id ).join( ',' );
 				box.remove();
-			} );
-			const rows = document.getElementById( 'genqr-preset-rows' );
-			let next = rows.children.length;
-			const paint = ( tr ) => {
-				const v = ( name ) => tr.querySelector( '[name$="' + name + '"]' );
-				const fg = v( '[style][foreground]' ).value;
-				const type = v( '[gradient][type]' ).value;
-				const to = v( '[gradient][color]' ).value;
-				tr.querySelector( '.genqr-swatch' ).style.background = ! type ? fg : type === 'linear' ? 'linear-gradient(' + v( '[gradient][rotation]' ).value + 'deg,' + fg + ',' + to + ')' : 'radial-gradient(' + fg + ',' + to + ')';
-			};
-			[ ...rows.children ].forEach( paint );
-			rows.addEventListener( 'input', ( e ) => paint( e.target.closest( 'tr' ) ) );
-			rows.addEventListener( 'click', ( e ) => {
-				if ( ! e.target.classList.contains( 'genqr-remove-preset' ) ) return;
-				e.target.closest( 'tr' ).remove();
-				if ( ! rows.querySelector( 'input[name="default_preset"]:checked' ) && rows.firstElementChild ) rows.firstElementChild.querySelector( 'input[name="default_preset"]' ).checked = true;
-			} );
-			document.getElementById( 'genqr-add-preset' ).addEventListener( 'click', () => {
-				const html = document.getElementById( 'genqr-preset-template' ).innerHTML.replaceAll( '__i__', 'n' + ( next++ ) );
-				rows.insertAdjacentHTML( 'beforeend', html );
-				paint( rows.lastElementChild );
-				rows.lastElementChild.querySelector( 'input[type=text]' ).focus();
+				if ( wasDefault ) list.querySelector( 'input[value="0"]' ).checked = true;
 			} );
 			let frame;
 			document.getElementById( 'genqr-add-logos' ).addEventListener( 'click', () => {
@@ -456,12 +534,11 @@ class GenQR_Admin {
 						if ( current.includes( String( a.id ) ) ) return;
 						current.push( String( a.id ) );
 						const box = document.createElement( 'label' );
-						box.className = 'genqr-logo';
+						box.className = 'genqr-tile genqr-logo';
 						box.dataset.id = a.id;
-						box.style.cssText = 'border:1px solid #dcdcde;border-radius:4px;padding:8px;text-align:center;width:110px;background:#fff';
-						const src = ( a.sizes && a.sizes.medium ? a.sizes.medium.url : a.url );
-						box.innerHTML = '<img alt="" style="max-width:90px;max-height:60px;display:block;margin:0 auto 6px"><input type="radio" name="default_logo"> <?php echo esc_js( __( 'Default', 'genqr' ) ); ?><br><a href="#" class="genqr-remove-logo"><?php echo esc_js( __( 'Remove', 'genqr' ) ); ?></a>';
-						box.querySelector( 'img' ).src = src;
+						box.innerHTML = '<span class="genqr-tile-img"><img alt=""></span><span class="genqr-tile-name"></span><span><input type="radio" name="default_logo"> <?php echo esc_js( __( 'Default', 'genqr' ) ); ?></span><button type="button" class="button-link button-link-delete genqr-remove-logo"><?php echo esc_js( __( 'Remove', 'genqr' ) ); ?></button>';
+						box.querySelector( 'img' ).src = ( a.sizes && a.sizes.medium ? a.sizes.medium.url : a.url );
+						box.querySelector( '.genqr-tile-name' ).textContent = a.title || '';
 						box.querySelector( 'input' ).value = a.id;
 						list.appendChild( box );
 					} );
@@ -469,52 +546,96 @@ class GenQR_Admin {
 				} );
 				frame.open();
 			} );
+
+			// Presets: live swatch, gradient fields only when a gradient is chosen, add/remove.
+			const rows = document.getElementById( 'genqr-preset-rows' );
+			let next = rows.children.length;
+			const field = ( card, name ) => card.querySelector( '[name$="' + name + '"]' );
+			const paint = ( card ) => {
+				const fg = field( card, '[style][foreground]' ).value;
+				const type = field( card, '[gradient][type]' ).value;
+				const to = field( card, '[gradient][color]' ).value;
+				const angle = field( card, '[gradient][rotation]' ).value;
+				card.querySelector( '.genqr-swatch' ).style.background = ! type ? fg : type === 'linear' ? 'linear-gradient(' + angle + 'deg,' + fg + ',' + to + ')' : 'radial-gradient(' + fg + ',' + to + ')';
+				card.querySelectorAll( '.genqr-if-gradient' ).forEach( ( el ) => ( el.hidden = ! type ) );
+				card.querySelectorAll( '.genqr-if-linear' ).forEach( ( el ) => ( el.hidden = type !== 'linear' ) );
+				field( card, '[style][eyeColor]' ).hidden = ! field( card, '[eye_on]' ).checked;
+			};
+			const markDefault = () => rows.querySelectorAll( '.genqr-preset' ).forEach( ( c ) => c.classList.toggle( 'is-default', c.querySelector( 'input[name="default_preset"]' ).checked ) );
+			[ ...rows.children ].forEach( paint );
+			markDefault();
+			rows.addEventListener( 'input', ( e ) => paint( e.target.closest( '.genqr-preset' ) ) );
+			rows.addEventListener( 'change', ( e ) => {
+				paint( e.target.closest( '.genqr-preset' ) );
+				markDefault();
+			} );
+			rows.addEventListener( 'click', ( e ) => {
+				if ( ! e.target.classList.contains( 'genqr-remove-preset' ) ) return;
+				e.target.closest( '.genqr-preset' ).remove();
+				if ( ! rows.querySelector( 'input[name="default_preset"]:checked' ) && rows.firstElementChild ) rows.firstElementChild.querySelector( 'input[name="default_preset"]' ).checked = true;
+				markDefault();
+			} );
+			document.getElementById( 'genqr-add-preset' ).addEventListener( 'click', () => {
+				const html = document.getElementById( 'genqr-preset-template' ).innerHTML.replaceAll( '__i__', 'n' + ( next++ ) );
+				rows.insertAdjacentHTML( 'beforeend', html );
+				paint( rows.lastElementChild );
+				rows.lastElementChild.querySelector( 'input[type=text]' ).focus();
+			} );
 		} )();
 		</script>
 		<?php
 	}
 
-	/** One editable preset row; $key is the form index ('__i__' in the template). */
-	private static function preset_row( $key, array $preset, $is_default ) {
+	/** One editable preset card; $key is the form index ('__i__' in the template). */
+	private static function preset_card( $key, array $preset, $is_default ) {
 		$st     = GenQR_Settings::sanitize_style( $preset['style'] ?? array() );
 		$n      = 'presets[' . $key . ']';
+		$g      = $st['gradient'];
 		$shapes = array(
 			'moduleShape'   => array( __( 'Pattern', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'dots' => __( 'Dots', 'genqr' ) ) ),
 			'eyeFrameShape' => array( __( 'Corner frame', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
 			'eyeBallShape'  => array( __( 'Corner centre', 'genqr' ), array( 'square' => __( 'Square', 'genqr' ), 'rounded' => __( 'Rounded', 'genqr' ), 'circle' => __( 'Circle', 'genqr' ) ) ),
 		);
-		$g = $st['gradient'];
 		?>
-		<tr class="genqr-preset">
-			<td><input type="radio" name="default_preset" value="<?php echo esc_attr( $key ); ?>" <?php checked( $is_default ); ?> aria-label="<?php esc_attr_e( 'Default preset', 'genqr' ); ?>"></td>
-			<td><span class="genqr-swatch" style="display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:middle;margin-right:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)"></span>
-				<input type="text" name="<?php echo esc_attr( $n ); ?>[name]" value="<?php echo esc_attr( $preset['name'] ); ?>" maxlength="40" style="width:140px" placeholder="<?php esc_attr_e( 'Preset name', 'genqr' ); ?>"></td>
-			<td>
-				<label><?php esc_html_e( 'Code', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][foreground]" value="<?php echo esc_attr( $st['foreground'] ); ?>"></label>
-				<label><?php esc_html_e( 'Background', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][background]" value="<?php echo esc_attr( $st['background'] ); ?>"></label><br>
-				<label><?php esc_html_e( 'Gradient', 'genqr' ); ?>
+		<div class="genqr-preset">
+			<div class="genqr-preset-head">
+				<span class="genqr-swatch"></span>
+				<input type="text" name="<?php echo esc_attr( $n ); ?>[name]" value="<?php echo esc_attr( $preset['name'] ); ?>" maxlength="40" placeholder="<?php esc_attr_e( 'Preset name', 'genqr' ); ?>" aria-label="<?php esc_attr_e( 'Preset name', 'genqr' ); ?>">
+			</div>
+			<div class="genqr-preset-body">
+				<span><?php esc_html_e( 'Code colour', 'genqr' ); ?></span>
+				<input type="color" name="<?php echo esc_attr( $n ); ?>[style][foreground]" value="<?php echo esc_attr( $st['foreground'] ); ?>">
+				<span><?php esc_html_e( 'Background', 'genqr' ); ?></span>
+				<input type="color" name="<?php echo esc_attr( $n ); ?>[style][background]" value="<?php echo esc_attr( $st['background'] ); ?>">
+				<span><?php esc_html_e( 'Gradient', 'genqr' ); ?></span>
+				<span class="genqr-inline">
 					<select name="<?php echo esc_attr( $n ); ?>[style][gradient][type]">
 						<option value="" <?php selected( ! $g ); ?>><?php esc_html_e( 'None', 'genqr' ); ?></option>
 						<option value="linear" <?php selected( $g['type'] ?? '', 'linear' ); ?>><?php esc_html_e( 'Linear', 'genqr' ); ?></option>
 						<option value="radial" <?php selected( $g['type'] ?? '', 'radial' ); ?>><?php esc_html_e( 'Radial', 'genqr' ); ?></option>
-					</select></label>
-				<label><?php esc_html_e( 'to', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][gradient][color]" value="<?php echo esc_attr( $g['color'] ?? '#1565c0' ); ?>"></label>
-				<label><input type="number" name="<?php echo esc_attr( $n ); ?>[style][gradient][rotation]" min="0" max="360" step="15" style="width:64px" value="<?php echo (int) ( $g['rotation'] ?? 45 ); ?>">°</label><br>
-				<label><input type="checkbox" name="<?php echo esc_attr( $n ); ?>[eye_on]" value="1" <?php checked( null !== $st['eyeColor'] ); ?>> <?php esc_html_e( 'Corner colour', 'genqr' ); ?></label>
-				<input type="color" name="<?php echo esc_attr( $n ); ?>[style][eyeColor]" value="<?php echo esc_attr( $st['eyeColor'] ?? $st['foreground'] ); ?>">
-			</td>
-			<td>
+					</select>
+					<span class="genqr-if-gradient"><?php esc_html_e( 'to', 'genqr' ); ?> <input type="color" name="<?php echo esc_attr( $n ); ?>[style][gradient][color]" value="<?php echo esc_attr( $g['color'] ?? '#2563eb' ); ?>"></span>
+					<span class="genqr-if-linear"><input type="number" name="<?php echo esc_attr( $n ); ?>[style][gradient][rotation]" min="0" max="360" step="15" value="<?php echo (int) ( $g['rotation'] ?? 45 ); ?>" aria-label="<?php esc_attr_e( 'Angle', 'genqr' ); ?>">°</span>
+				</span>
+				<span><?php esc_html_e( 'Corners', 'genqr' ); ?></span>
+				<span class="genqr-inline">
+					<label><input type="checkbox" name="<?php echo esc_attr( $n ); ?>[eye_on]" value="1" <?php checked( null !== $st['eyeColor'] ); ?>> <?php esc_html_e( 'Own colour', 'genqr' ); ?></label>
+					<input type="color" name="<?php echo esc_attr( $n ); ?>[style][eyeColor]" value="<?php echo esc_attr( $st['eyeColor'] ?? $st['foreground'] ); ?>" aria-label="<?php esc_attr_e( 'Corner colour', 'genqr' ); ?>">
+				</span>
 				<?php foreach ( $shapes as $k => list( $label, $options ) ) : ?>
-					<label style="display:block;margin-bottom:2px"><?php echo esc_html( $label ); ?>
-						<select name="<?php echo esc_attr( $n ); ?>[style][<?php echo esc_attr( $k ); ?>]">
-							<?php foreach ( $options as $value => $name ) : ?>
-								<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $st[ $k ], $value ); ?>><?php echo esc_html( $name ); ?></option>
-							<?php endforeach; ?>
-						</select></label>
+					<span><?php echo esc_html( $label ); ?></span>
+					<select name="<?php echo esc_attr( $n ); ?>[style][<?php echo esc_attr( $k ); ?>]">
+						<?php foreach ( $options as $value => $name ) : ?>
+							<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $st[ $k ], $value ); ?>><?php echo esc_html( $name ); ?></option>
+						<?php endforeach; ?>
+					</select>
 				<?php endforeach; ?>
-			</td>
-			<td><button type="button" class="button-link button-link-delete genqr-remove-preset"><?php esc_html_e( 'Remove', 'genqr' ); ?></button></td>
-		</tr>
+			</div>
+			<div class="genqr-preset-foot">
+				<label><input type="radio" name="default_preset" value="<?php echo esc_attr( $key ); ?>" <?php checked( $is_default ); ?>> <?php esc_html_e( 'Default', 'genqr' ); ?></label>
+				<button type="button" class="button-link button-link-delete genqr-remove-preset"><?php esc_html_e( 'Remove', 'genqr' ); ?></button>
+			</div>
+		</div>
 		<?php
 	}
 

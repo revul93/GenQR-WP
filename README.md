@@ -21,6 +21,8 @@ Design notes and decisions are in [PLAN.md](PLAN.md).
 
 ## Install
 
+Step-by-step for GoDaddy, including the database and WordPress settings: **[docs/deploy-godaddy.md](docs/deploy-godaddy.md)**.
+
 1. Download `genqr-<version>.zip` from [Releases](https://github.com/revul93/GenQR-WP/releases), or from the latest CI run's artifacts.
 2. In wp-admin, go to **Plugins → Add New → Upload Plugin**, choose the zip and click **Activate**.
 3. Open **QR Links → Settings**:
