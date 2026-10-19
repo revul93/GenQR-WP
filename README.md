@@ -71,13 +71,15 @@ Playground's admin login is `admin` / `password`. Its data is reset when you sto
 
 ### Sharing a test site with colleagues
 
-`playground/share.json` sets up a clean test site without auto-login. One way to expose it on the internet is a free Cloudflare quick tunnel:
+```bash
+bash scripts/share.sh
+```
 
-1. Start the tunnel and note the `https://…trycloudflare.com` address it prints: `cloudflared tunnel --url http://localhost:9400`
-2. Start Playground with that address: `npx wp-playground-cli server --port=9400 --site-url=<tunnel address> --mount=./plugin/genqr:/wordpress/wp-content/plugins/genqr --blueprint=./playground/share.json`
-3. Log in once with `admin` / `password`, configure it, and change the admin password straight away: the site is public.
+This starts a free Cloudflare quick tunnel and a Playground site behind it, and prints the public `https://…trycloudflare.com` address. It needs `cloudflared` in your PATH or in `.playground/bin/`.
 
-The site lives in memory, so stopping Playground (or the PC sleeping) resets it, and each new quick tunnel gets a new address.
+- **Auto-login is off.** A new admin password is generated on every start and written to `.playground/admin-login.txt`.
+- **Optional site data** goes in the git-ignored `.playground/restore/` folder: `settings.json` (GenQR settings, plus `logo_files` to add as logos) and the logo images. See `playground/share-setup.php`.
+- **The site lives in memory.** Stopping it resets everything, and each start gets a new address. Quick tunnels also stop working when the PC sleeps.
 
 CI runs a PHP syntax check (8.1 and 8.4), the type check, the tests, the build and the Playground smoke test, and then packages the zip. Pushing a tag `v*` publishes a GitHub release with the zip attached.
 
