@@ -158,6 +158,23 @@ class GenQR_Settings {
 		);
 	}
 
+	/**
+	 * A visitor's full design for one QR code: the preset fields plus the advanced ones
+	 * (margin, error correction, logo size/spacing, transparency) and the chosen logo.
+	 */
+	public static function sanitize_design( $design ) {
+		$design = is_array( $design ) ? $design : array();
+		$style  = self::sanitize_style( $design );
+		$style += array(
+			'transparentBackground' => ! empty( $design['transparentBackground'] ),
+			'margin'                => max( 0, min( 10, (int) ( $design['margin'] ?? 4 ) ) ),
+			'errorCorrection'       => in_array( $design['errorCorrection'] ?? '', array( 'L', 'M', 'Q', 'H' ), true ) ? $design['errorCorrection'] : 'M',
+			'logoSizePercent'       => max( 10, min( 30, (float) ( $design['logoSizePercent'] ?? 22 ) ) ),
+			'logoBacking'           => ! isset( $design['logoBacking'] ) || (bool) $design['logoBacking'],
+		);
+		return $style;
+	}
+
 	private static function sanitize_gradient( $g ) {
 		if ( ! is_array( $g ) || ! in_array( $g['type'] ?? '', array( 'linear', 'radial' ), true ) || ! preg_match( '/^#[0-9a-fA-F]{6}$/', $g['color'] ?? '' ) ) {
 			return null;

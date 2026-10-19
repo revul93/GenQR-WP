@@ -237,7 +237,7 @@ class GenQR_Admin {
 				</form>
 				<?php if ( $link ) : ?>
 				<div style="width:260px">
-					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->title ? $link->title : 'qr-' . $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
+					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->title ? $link->title : 'qr-' . $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" data-link="<?php echo esc_attr( wp_json_encode( GenQR_Links::to_public( $link ) ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
 				</div>
 				<?php endif; ?>
 			</div>

@@ -202,7 +202,10 @@ class GenQR_Links {
 
 	/** What the public "All QR codes" page may show about a link. */
 	public static function to_public( $link ) {
+		$design = ! empty( $link->design ) ? json_decode( $link->design, true ) : null;
 		return array(
+			'style'       => is_array( $design ) ? GenQR_Settings::sanitize_design( $design['style'] ?? array() ) : null,
+			'logoId'      => is_array( $design ) ? (int) ( $design['logoId'] ?? 0 ) : null,
 			'code'        => $link->code,
 			'title'       => $link->title,
 			'shortUrl'    => GenQR_Settings::short_url( $link->code ),
@@ -210,6 +213,29 @@ class GenQR_Links {
 			'clicks'      => (int) $link->clicks,
 			'createdAt'   => gmdate( 'c', strtotime( $link->created_at . ' UTC' ) ),
 		);
+	}
+
+	/** Stores a link's design: { style, logoId }. Logo must be one of the admin's logos. */
+	public static function set_design( $id, $style, $logo_id, $token_hash = null ) {
+		global $wpdb;
+		$logos = array_map( 'intval', GenQR_Settings::get()['logos'] );
+		$data  = array(
+			'design' => wp_json_encode(
+				array(
+					'style'  => GenQR_Settings::sanitize_design( $style ),
+					'logoId' => in_array( (int) $logo_id, $logos, true ) ? (int) $logo_id : 0,
+				)
+			),
+		);
+		if ( null !== $token_hash ) {
+			$data['design_token'] = $token_hash;
+		}
+		$wpdb->update( GenQR_DB::links_table(), $data, array( 'id' => (int) $id ) );
+	}
+
+	/** Keyed hash of a design edit key, so the key itself is never stored. */
+	public static function token_hash( $token ) {
+		return hash_hmac( 'sha256', (string) $token, wp_salt( 'auth' ) );
 	}
 
 	public static function delete( $id ) {

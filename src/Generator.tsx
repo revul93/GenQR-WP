@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ClientConfig, PublicLink } from './config';
 import { colourWarnings, type QrStyle } from './engine/style';
 import { ExportDialog, PrintDialog, QuickDownload } from './ExportDialog';
+import { getEditKey, linkDesign, setEditKey } from './design';
 import { applyPreset, matchesPreset, swatch } from './presets';
 import { Alert, Button, Check, ColourField, CopyButton, Field, Icon, Section, Select, Slider, ToggleGroup } from './ui';
 import { useLogo, useQr } from './useQr';
@@ -39,6 +40,9 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
   const [dialog, setDialog] = useState<'export' | 'print' | null>(null);
   const [advanced, setAdvanced] = useState(false);
   const honeypot = useRef<HTMLInputElement>(null);
+  // Design as last saved to the link, to save only real changes.
+  const saved = useRef('');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const setStyle = (patch: Partial<QrStyle>) => setStyleState((s) => ({ ...s, ...patch }));
 
@@ -52,9 +56,13 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
         if (!res.ok) throw new Error(body.message || 'Could not load this QR code.');
         if (!current) return;
         const l = body as Link;
+        const d = linkDesign(l, config);
+        saved.current = JSON.stringify({ style: d.style, logoId: d.logoId });
         created.set(l.destination, l);
         setUrl(l.destination);
         setTitle(l.title || '');
+        setStyleState(d.style);
+        setLogoId(d.logoId);
         setLink(l);
       })
       .catch((e) => current && setNotice((e as Error).message));
@@ -71,6 +79,32 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
   const warnings = colourWarnings(style);
   const hasLogo = logoId !== 0;
   const current = !!link && created.get(url.trim()) === link;
+  const editKey = link ? (link.editKey ?? getEditKey(link.code)) : null;
+
+  // Design tweaks after creating the code are saved to the link (debounced), so the
+  // "All QR codes" page shows it as it was downloaded.
+  useEffect(() => {
+    if (!link || !current || !editKey) return;
+    const design = JSON.stringify({ style, logoId });
+    if (design === saved.current) return;
+    const t = setTimeout(async () => {
+      setSaveState('saving');
+      try {
+        const res = await fetch(`${config.api}links/${encodeURIComponent(link.code)}/design`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ key: editKey, style, logoId }),
+        });
+        if (!res.ok) throw new Error();
+        saved.current = design;
+        setSaveState('saved');
+      } catch {
+        setSaveState('error');
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [link, current, editKey, style, logoId, config.api]);
 
   async function create(e?: Event) {
     e?.preventDefault();
@@ -89,7 +123,7 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ url: value, title: title.trim(), website: honeypot.current?.value ?? '' }),
+        body: JSON.stringify({ url: value, title: title.trim(), style, logoId, website: honeypot.current?.value ?? '' }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -98,8 +132,11 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
         else setNotice(message);
         return;
       }
-      created.set(value, body as Link);
-      setLink(body as Link);
+      const l = body as Link;
+      if (l.editKey) setEditKey(l.code, l.editKey);
+      saved.current = JSON.stringify({ style, logoId });
+      created.set(value, l);
+      setLink(l);
     } catch {
       setNotice('Could not reach the server. Check your connection and try again.');
     } finally {
@@ -295,6 +332,15 @@ export function Generator({ config, openCode, onNew }: { config: ClientConfig; o
                     Opens {link.destination}
                   </span>
                 </div>
+                <p class="caption top-gap">
+                  {!editKey
+                    ? 'Design changes here apply to your downloads only.'
+                    : saveState === 'saving'
+                      ? 'Saving the design…'
+                      : saveState === 'error'
+                        ? 'Could not save the design changes. Downloads still use them.'
+                        : 'Design changes are saved to this QR code.'}
+                </p>
               </div>
             )}
             {warnings.map((w) => (

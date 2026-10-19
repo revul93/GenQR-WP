@@ -31,6 +31,11 @@ export interface PublicLink {
   destination: string;
   clicks?: number;
   createdAt?: string;
+  /** The design it was made with; null for links made before designs were stored. */
+  style?: Partial<QrStyle> | null;
+  logoId?: number | null;
+  /** Only in the response to creating a link: lets this browser save later design tweaks. */
+  editKey?: string;
 }
 
 export function readConfig(el: HTMLElement): ClientConfig {

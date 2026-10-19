@@ -14,7 +14,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'GENQR_VERSION', '0.1.0' );
-define( 'GENQR_DB_VERSION', '2' );
+define( 'GENQR_DB_VERSION', '3' );
 define( 'GENQR_FILE', __FILE__ );
 define( 'GENQR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GENQR_URL', plugin_dir_url( __FILE__ ) );

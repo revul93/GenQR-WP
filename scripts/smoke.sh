@@ -27,6 +27,15 @@ curl -sI -A Mozilla "$B/go/$code" | grep -qi 'cache-control: no-store' || fail "
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$B/go/zzzzzzz")" = 404 ] || fail "unknown code should 404"
 
 curl -s "$B/wp-json/genqr/v1/links/$code" | grep -q '"title":"Smoke test"' || fail "title not stored (or not stripped of HTML)"
+
+# Design is stored with the link; later tweaks need the creator's edit key.
+designed=$(post '{"url":"127.0.0.1/designed","style":{"foreground":"#e11d48","moduleShape":"dots"},"logoId":0}')
+dcode=$(grep -oE '"code":"[a-z0-9]{7}"' <<<"$designed" | cut -d'"' -f4)
+key=$(grep -oE '"editKey":"[A-Za-z0-9]+"' <<<"$designed" | cut -d'"' -f4)
+curl -s "$B/wp-json/genqr/v1/links/$dcode" | grep -q '"moduleShape":"dots"' || fail "design not stored"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"key":"wrong","style":{}}' "$B/wp-json/genqr/v1/links/$dcode/design")" = 403 ] || fail "design changed without the edit key"
+curl -s -X POST -H 'Content-Type: application/json' -d "{\"key\":\"$key\",\"style\":{\"foreground\":\"#000000\",\"moduleShape\":\"square\"}}" "$B/wp-json/genqr/v1/links/$dcode/design" | grep -q '"moduleShape":"square"' || fail "design update with the edit key"
+curl -s "$B/wp-json/genqr/v1/links/$dcode" | grep -q '"design_token"' && fail "edit key hash exposed"
 curl -s "$B/wp-json/genqr/v1/links?search=smoke" | grep -q "\"code\":\"$code\"" || fail "public list"
 
 curl -s "$B/" >/dev/null

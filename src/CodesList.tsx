@@ -3,6 +3,7 @@ import type { ClientConfig, PublicLink } from './config';
 import { renderSvg } from './engine/render';
 import { DownloadSplit, ExportDialog } from './ExportDialog';
 import { Alert, Button, CopyButton, Field, Icon } from './ui';
+import { linkDesign } from './design';
 import { useLogo } from './useQr';
 
 /** Public list of every active QR code: title, short link, destination, clicks. */
@@ -89,13 +90,14 @@ export function CodesList({ config, onOpen }: { config: ClientConfig; onOpen(cod
 }
 
 function CodeCard({ item, config, onOpen }: { item: PublicLink; config: ClientConfig; onOpen(): void }) {
-  // Thumbnails and downloads use the site's default design and logo (visitors' own designs are not stored).
+  // Thumbnails and downloads use the design the code was made with (or the site default for older codes).
   const [dialog, setDialog] = useState(false);
-  const logo = useLogo(config.logos, config.defaultLogo);
-  const svgAt = useMemo(() => (sizePx: number) => renderSvg({ data: item.shortUrl, style: config.style, logoDataUri: logo, sizePx }), [item.shortUrl, config.style, logo]);
+  const design = useMemo(() => linkDesign(item, config), [item, config]);
+  const logo = useLogo(config.logos, design.logoId);
+  const svgAt = useMemo(() => (sizePx: number) => renderSvg({ data: item.shortUrl, style: design.style, logoDataUri: logo, sizePx }), [item.shortUrl, design, logo]);
   const src = useMemo(() => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgAt(160)), [svgAt]);
   const filename = (item.title || `qr-${item.code}`).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || `qr-${item.code}`;
-  const background = config.style.transparentBackground ? '#ffffff' : config.style.background;
+  const background = design.style.transparentBackground ? '#ffffff' : design.style.background;
   const created = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
   return (
     <article class="paper card">

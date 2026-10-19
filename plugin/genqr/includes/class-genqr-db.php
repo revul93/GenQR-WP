@@ -38,6 +38,8 @@ class GenQR_DB {
 				created_by bigint(20) unsigned NULL DEFAULT NULL,
 				created_ip_hash char(64) NULL DEFAULT NULL,
 				updated_at datetime NOT NULL,
+				design text NULL,
+				design_token char(64) NULL DEFAULT NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY code (code),
 				KEY created_ip_hash (created_ip_hash)
