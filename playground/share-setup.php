@@ -51,6 +51,35 @@ if ( is_array( $settings ) && $settings ) {
 	GenQR_Settings::update( $settings );
 }
 
+// Links from a previous run (exported from the public list), with the same short codes so
+// QR codes already shared keep working. Logos get new ids on every run: a link that had a
+// logo gets the first logo of this run.
+if ( is_readable( '/restore/links.json' ) ) {
+	global $wpdb;
+	$first_logo = (int) ( GenQR_Settings::get()['logos'][0] ?? 0 );
+	foreach ( (array) json_decode( file_get_contents( '/restore/links.json' ), true ) as $l ) {
+		if ( empty( $l['code'] ) || empty( $l['destination'] ) || GenQR_Links::get_by_code( $l['code'] ) ) {
+			continue;
+		}
+		$created = ! empty( $l['createdAt'] ) ? gmdate( 'Y-m-d H:i:s', strtotime( $l['createdAt'] ) ) : GenQR_Links::now();
+		$wpdb->insert(
+			GenQR_DB::links_table(),
+			array(
+				'code'        => strtolower( $l['code'] ),
+				'title'       => GenQR_Links::clean_title( $l['title'] ?? '' ),
+				'destination' => esc_url_raw( $l['destination'], array( 'http', 'https' ) ),
+				'is_active'   => 1,
+				'clicks'      => (int) ( $l['clicks'] ?? 0 ),
+				'created_at'  => $created,
+				'updated_at'  => $created,
+			)
+		);
+		if ( is_array( $l['style'] ?? null ) ) {
+			GenQR_Links::set_design( $wpdb->insert_id, $l['style'], ! empty( $l['logoId'] ) ? $first_logo : 0 );
+		}
+	}
+}
+
 // Generator as the homepage (same as the "Use as homepage" button).
 $s    = GenQR_Settings::get();
 $page = wp_insert_post(

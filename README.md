@@ -77,7 +77,8 @@ bash scripts/share.sh
 
 This starts a free Cloudflare quick tunnel and a Playground site behind it, and prints the public `https://…trycloudflare.com` address. It needs `cloudflared` in your PATH or in `.playground/bin/`.
 
-- **Auto-login is off.** A new admin password is generated on every start and written to `.playground/admin-login.txt`.
+- **Admin login is `admin` / `password`**, or set `GENQR_ADMIN_PASS` for another password. Anyone with the address can try it, so installing or editing plugins and themes from wp-admin is switched off.
+- **Codes survive restarts.** If the previous test site is still running, the script saves its codes and asks you to stop it. The next start brings the codes back with the same short codes, titles, scan counts and designs. Codes that were switched off aren't carried over.
 - **Optional site data** goes in the git-ignored `.playground/restore/` folder: `settings.json` (GenQR settings, plus `logo_files` to add as logos) and the logo images. See `playground/share-setup.php`.
 - **The site lives in memory.** Stopping it resets everything, and each start gets a new address. Quick tunnels also stop working when the PC sleeps.
 
