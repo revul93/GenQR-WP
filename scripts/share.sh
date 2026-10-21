@@ -13,14 +13,14 @@ mkdir -p .playground/restore
 
 # A test site from an earlier run still answering locally? Save its links first, so the
 # new site gets them back with the same short codes (see playground/share-setup.php).
-if curl -s -o /dev/null --max-time 5 http://127.0.0.1:9400/; then
-  OLD=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' .playground/tunnel.log 2>/dev/null | head -1 | sed 's#https://##' || true)
+if curl -s -o /dev/null --max-time 60 http://127.0.0.1:9400/wp-json/ || [ -n "$(netstat -an 2>/dev/null | grep -E '[:.]9400 .*LISTEN')" ]; then
+  OLD=$(sed 's#https://##' .playground/site-url 2>/dev/null || true)
   node -e '
     const host = process.argv[1];
     (async () => {
       let page = 1, items = [];
       for (;;) {
-        const r = await fetch("http://127.0.0.1:9400/wp-json/genqr/v1/links?page=" + page, { headers: host ? { Host: host } : {} });
+        const r = await fetch("http://127.0.0.1:9400/wp-json/genqr/v1/links?page=" + page, { headers: host ? { Host: host } : {}, signal: AbortSignal.timeout(90000) });
         const j = await r.json();
         items.push(...(j.items || []));
         if (page >= (j.pages || 1)) break;
@@ -48,6 +48,8 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 [ -n "$URL" ] || { echo "The tunnel did not start; see .playground/tunnel.log" >&2; exit 1; }
+
+printf '%s' "$URL" > .playground/site-url
 
 PASS="${GENQR_ADMIN_PASS:-password}"
 printf '%s' "$PASS" > .playground/restore/admin-pass
