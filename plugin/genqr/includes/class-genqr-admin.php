@@ -203,6 +203,12 @@ class GenQR_Admin {
 			<hr class="wp-header-end">
 			<p><?php esc_html_e( 'Every QR code contains one of these short links. Change a destination and printed codes follow it immediately. To export some codes as images or a printable sheet, tick them and choose "Export QR codes" under Bulk actions.', 'genqr' ); ?></p>
 			<?php self::mount( 'export' ); ?>
+			<style>
+			.wp-list-table .column-qr{width:76px}
+			.genqr-thumb{display:block;width:64px;height:64px;border-radius:4px;background:#f0f0f1}
+			.genqr-thumb img{display:block;width:64px;height:64px}
+			.genqr-thumb:focus{box-shadow:0 0 0 2px #2271b1}
+			</style>
 			<?php $table->views(); ?>
 			<form method="get" id="genqr-list-form">
 				<input type="hidden" name="page" value="genqr">

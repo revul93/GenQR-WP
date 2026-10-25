@@ -4,6 +4,7 @@ import { readConfig, type Link } from './config';
 import { Designer } from './Designer';
 import { Import } from './Import';
 import { CSS } from './styles';
+import { drawThumbnails } from './thumbnails';
 
 /**
  * wp-admin app. Each GenQR admin screen has a <div class="genqr-app" data-view="…">;
@@ -25,6 +26,7 @@ function mount(el: HTMLElement) {
   const host = document.createElement('div');
   root.append(style, host);
   const view = el.dataset.view;
+  if (view === 'export') drawThumbnails(config); // the list page: QR code column
   render(view === 'import' ? <Import config={config} /> : view === 'export' ? <ListExport config={config} /> : <Designer config={config} link={link} />, host);
 }
 

@@ -24,7 +24,8 @@ class GenQR_Links_Table extends WP_List_Table {
 	public function get_columns() {
 		return array(
 			'cb'            => '<input type="checkbox" />',
-			'code'          => __( 'QR code', 'genqr' ),
+			'qr'            => __( 'QR code', 'genqr' ),
+			'code'          => __( 'Short link', 'genqr' ),
 			'destination'   => __( 'Destination', 'genqr' ),
 			'clicks'        => __( 'Clicks', 'genqr' ),
 			'last_click_at' => __( 'Last click', 'genqr' ),
@@ -90,6 +91,16 @@ class GenQR_Links_Table extends WP_List_Table {
 
 	protected function column_cb( $item ) {
 		return sprintf( '<input type="checkbox" name="ids[]" value="%d" />', (int) $item->id );
+	}
+
+	/** A placeholder the admin script fills with the code drawn in its own design. */
+	protected function column_qr( $item ) {
+		return sprintf(
+			'<a href="%s" class="genqr-thumb" data-link="%s" aria-label="%s"></a>',
+			esc_url( admin_url( 'admin.php?page=genqr-edit&id=' . (int) $item->id ) ),
+			esc_attr( wp_json_encode( GenQR_Links::to_api( $item ) ) ),
+			esc_attr( sprintf( /* translators: %s: title or short link */ __( 'Edit %s', 'genqr' ), $item->title ? $item->title : $item->code ) )
+		);
 	}
 
 	protected function column_code( $item ) {

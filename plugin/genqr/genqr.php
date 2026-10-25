@@ -3,7 +3,7 @@
  * Plugin Name:       GenQR – QR Codes & Short Links
  * Plugin URI:        https://github.com/revul93/GenQR-WP
  * Description:       Branded QR codes with short links on your own domain. Administrators create, import and export codes in wp-admin; the public site only redirects the short links.
- * Version:           0.2.0
+ * Version:           0.2.1
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            GenQR
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GENQR_VERSION', '0.2.0' );
+define( 'GENQR_VERSION', '0.2.1' );
 define( 'GENQR_DB_VERSION', '4' );
 define( 'GENQR_FILE', __FILE__ );
 define( 'GENQR_DIR', plugin_dir_path( __FILE__ ) );
