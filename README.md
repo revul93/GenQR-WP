@@ -1,16 +1,13 @@
 # GenQR for WordPress
 
-A WordPress plugin for branded QR codes that point to short links you control.
+A WordPress plugin for branded QR codes that point to short links you control. Administrators make the codes in wp-admin; the public site only redirects the short links.
 
-- Visitors open the generator page, paste a web address and get a styled QR code. No login is needed.
-- Each QR code contains a short link such as `https://your-site.com/go/k7m2xq9`. You can change where it goes at any time in wp-admin, and printed codes follow the change.
-- Visitors can only create links to **approved domains**, which you set in the settings. Administrators can link anywhere.
-- Each link counts its clicks. Admins can see the history of changes, switch links off and export them as CSV.
-- Downloads are PNG, JPG, SVG, PDF or Word, at any size, and you can print directly. They are all made in the visitor's browser.
-- Logos are uploaded by the admin, and visitors choose from them.
-- **All QR codes** page: anyone can browse and search every active code (title, short link, destination, scans) and open one to download it again. You can switch this off in Settings.
-- The generator page has its own clean layout: a top bar with your name ("GenQR") and no theme header, menu or footer. You can switch this off to use the theme's layout instead.
-- Presets (managed in Settings) give one-click designs; it ships with Black, Indigo, Lagoon, Coral and Emerald, all with a rounded pattern and circular corners.
+- **Add QR code** (wp-admin → QR codes): title, destination, optional **short link text** (`https://your-site.com/go/expo-2026`, or a random `…/go/k7m2xq9`), a preset or your own colours, shapes and logo, live preview with scan check, then download (PNG, JPG, SVG, PDF, Word) or print.
+- **Import**: upload a CSV or Excel (.xlsx) file with link, title and short link text per row. Every row is checked first; one preset and logo apply to the whole import.
+- **Export**: tick codes in the list (or export all) and get a **ZIP of image files** (PNG, SVG, JPG or PDF, plus an index.csv) or a **printable A4 sheet** with the title and short link under each code. Each code keeps its own design.
+- Change a code's destination at any time and printed codes follow it. Each code counts its scans and keeps a history of changes. Switch codes off or delete them; export the list as CSV.
+- **Public site**: `/go/<code>` redirects (never cached). Every other page of the site can redirect to your main website (Settings → General).
+- Presets and logos are managed in Settings. It ships with Black, Indigo, Lagoon, Coral and Emerald (rounded pattern, circular corners).
 
 Design notes and decisions are in [PLAN.md](PLAN.md).
 
@@ -26,29 +23,30 @@ To have an AI agent do the deployment, give it **[docs/ai-deploy-runbook.md](doc
 
 1. Download `genqr-<version>.zip` from [Releases](https://github.com/revul93/GenQR-WP/releases), or from the latest CI run's artifacts.
 2. In wp-admin, go to **Plugins → Add New → Upload Plugin**, choose the zip and click **Activate**.
-3. Open **QR Links → Settings**:
-   - Check **Approved domains**. Your own site is added on activation.
-   - Add logos, set the default design and the title.
-   - Click **Use the QR generator as the homepage**, or put the shortcode `[genqr]` on any page.
+3. Open **QR codes → Settings**: set where other visitors go (General), add logos, check the presets.
+4. **QR codes → Add QR code** or **Import** to create codes.
 
 ### GoDaddy (and other hosts with page caching)
 
 The plugin marks `/go/…` redirects as uncacheable (`Cache-Control: no-store` and `DONOTCACHEPAGE`). After installing, run this check:
 
 1. Create a link and scan it.
-2. Change its destination in **QR Links**.
+2. Change its destination in **QR codes**.
 3. Scan it again: it should go to the new address straight away.
 
 If it still goes to the old address, exclude `/go/*` from caching in the host's caching settings, or flush the cache.
 
-## Shortcode
+## Import file format
+
+One row per QR code. A header row is optional; with one, columns can be in any order and are recognised by name (`url`/`link`/`destination`, `title`/`name`, `short_link`/`code`/`slug`). Without one, the order is link, title, short link text.
 
 ```
-[genqr]                      generator with the title from Settings
-[genqr title="Make a QR"]    a different title on this page
+url,title,short_link
+https://www.example.com/brochure,Product brochure,brochure-2026
+https://www.example.com/contact,Contact us,
 ```
 
-To change the button colour from the theme, set `--genqr-accent` on the page, for example `.genqr-root { --genqr-accent: #c00; }`.
+Short link text: 2–32 letters, numbers, dashes or underscores (spaces become dashes); empty gives a random code. Download a template from the Import screen. CSV files may use commas or semicolons and should be UTF-8 (Excel: "CSV UTF-8").
 
 ## Development
 
@@ -62,7 +60,7 @@ npm run playground   # WordPress at http://127.0.0.1:9400 with the plugin active
 
 ```bash
 npm run watch        # rebuild on change (reload the page)
-npm test             # unit tests (engine)
+npm test             # unit tests (engine, import parsing)
 npm run typecheck
 bash scripts/smoke.sh   # end-to-end checks against the running Playground
 ```
@@ -78,7 +76,7 @@ bash scripts/share.sh
 This starts a free Cloudflare quick tunnel and a Playground site behind it, and prints the public `https://…trycloudflare.com` address. It needs `cloudflared` in your PATH or in `.playground/bin/`.
 
 - **Admin login is `admin` / `password`**, or set `GENQR_ADMIN_PASS` for another password. Anyone with the address can try it, so installing or editing plugins and themes from wp-admin is switched off.
-- **Codes survive restarts.** If the previous test site is still running, the script saves its codes and asks you to stop it. The next start brings the codes back with the same short codes, titles, scan counts and designs. Codes that were switched off aren't carried over.
+- **Codes survive restarts.** If the previous test site is still running, the script saves its codes and asks you to stop it. The next start brings the codes back with the same short codes, titles, scan counts and designs.
 - **Optional site data** goes in the git-ignored `.playground/restore/` folder: `settings.json` (GenQR settings, plus `logo_files` to add as logos) and the logo images. See `playground/share-setup.php`.
 - **The site lives in memory.** Stopping it resets everything, and each start gets a new address. Quick tunnels also stop working when the PC sleeps.
 
@@ -89,9 +87,9 @@ CI runs a PHP syntax check (8.1 and 8.4), the type check, the tests, the build a
 | Path | What |
 | --- | --- |
 | `plugin/genqr/` | The plugin as installed. `assets/build/` is generated. |
-| `plugin/genqr/includes/` | PHP: tables, redirects, REST API, shortcode, admin screens |
-| `src/engine/` | QR renderer, scan check, exports (browser) |
-| `src/*.tsx` | Generator UI (Preact, Shadow DOM) and admin preview |
+| `plugin/genqr/includes/` | PHP: tables, redirects, admin-only REST API, admin screens |
+| `src/engine/` | QR renderer, scan check, exports, bulk ZIP/PDF sheet (browser) |
+| `src/*.tsx` | wp-admin app (Preact, Shadow DOM): designer, import, bulk export |
 | `playground/blueprint.json` | Local test site setup |
 
 ## License

@@ -12,14 +12,13 @@ class GenQR_Settings {
 	/** Path segments the link prefix must not take over. */
 	const RESERVED_PREFIXES = array( 'wp-admin', 'wp-content', 'wp-includes', 'wp-json', 'wp-login.php', 'feed', 'page', 'category', 'tag', 'author', 'search', 'comments', 'embed' );
 
+	/** Custom short link text: lower-case letters, digits, dashes and underscores. */
+	const CODE_PATTERN = '/^[a-z0-9][a-z0-9_-]{0,30}[a-z0-9]$/';
+
 	public static function defaults() {
 		return array(
-			'title'          => 'Jeddah Cables QR Generator',
-			'brand'          => 'GenQR',     // name in the top bar of the generator page
-			'public_list'    => true,        // "All QR codes" page for visitors
-			'full_page'      => true,        // generator page uses the plugin's own clean layout
+			'home_redirect'  => '',          // where the site's other public pages send visitors ('' = leave them alone)
 			'prefix'         => 'go',
-			'domains'        => array(),
 			'logos'          => array(),    // attachment ids
 			'default_logo'   => 0,          // attachment id, 0 = none
 			// Design used when there are no presets.
@@ -31,13 +30,11 @@ class GenQR_Settings {
 				'eyeBallShape'  => 'circle',
 			),
 			'presets'        => self::default_presets(),
-			'default_preset' => 0,          // index into presets; the design the generator starts with
-			'rate_limit'     => 20,         // links per visitor per hour
-			'homepage_id'    => 0,          // page created by "Use as homepage"
+			'default_preset' => 0,          // index into presets; the design new codes start with
 		);
 	}
 
-	/** Ready-made designs from the logo's colours; each keeps at least 3:1 contrast on white. */
+	/** Ready-made designs; each keeps at least 3:1 contrast on white. */
 	public static function default_presets() {
 		// Every preset: rounded pattern, circular corners.
 		$preset = static function ( $name, $fg, $gradient = null ) {
@@ -80,7 +77,7 @@ class GenQR_Settings {
 		return $out;
 	}
 
-	/** The design the generator starts with: the default preset, or the fallback style. */
+	/** The design new codes start with: the default preset, or the fallback style. */
 	public static function start_style() {
 		$s       = self::get();
 		$presets = $s['presets'];
@@ -100,17 +97,10 @@ class GenQR_Settings {
 		update_option( self::OPTION, array_merge( self::get(), $values ) );
 	}
 
-	/** On first activation, allow the site's own domain. */
 	public static function ensure_defaults() {
-		if ( false !== get_option( self::OPTION ) ) {
-			return;
+		if ( false === get_option( self::OPTION ) ) {
+			add_option( self::OPTION, self::defaults() );
 		}
-		$settings = self::defaults();
-		$host     = wp_parse_url( home_url(), PHP_URL_HOST );
-		if ( $host ) {
-			$settings['domains'] = array( preg_replace( '/^www\./', '', strtolower( $host ) ) );
-		}
-		add_option( self::OPTION, $settings );
 	}
 
 	public static function prefix() {
@@ -122,26 +112,40 @@ class GenQR_Settings {
 		return home_url( '/' . self::prefix() . '/' . $code );
 	}
 
-	/** Normalises a list of domains typed by the admin; drops invalid entries. */
-	public static function sanitize_domains( $text ) {
-		$out = array();
-		foreach ( preg_split( '/[\s,]+/', strtolower( (string) $text ) ) as $d ) {
-			$d = preg_replace( '#^https?://#', '', trim( $d ) );
-			$d = preg_replace( '#[/:].*$#', '', $d );
-			$d = preg_replace( '/^www\./', '', $d );
-			if ( preg_match( '/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $d ) ) {
-				$out[] = $d;
-			}
-		}
-		return array_values( array_unique( $out ) );
-	}
-
 	public static function sanitize_prefix( $prefix ) {
 		$prefix = strtolower( trim( (string) $prefix, " /\t\n" ) );
 		if ( ! preg_match( '/^[a-z0-9][a-z0-9-]{0,19}$/', $prefix ) || in_array( $prefix, self::RESERVED_PREFIXES, true ) ) {
 			return null;
 		}
 		return $prefix;
+	}
+
+	/**
+	 * Normalises short link text typed by an admin ("Expo 2026" → "expo-2026").
+	 * Returns null when nothing usable is left; 2–32 characters.
+	 */
+	public static function sanitize_code( $code ) {
+		$code = strtolower( trim( (string) $code ) );
+		$code = preg_replace( '/\s+/', '-', $code );
+		return preg_match( self::CODE_PATTERN, $code ) ? $code : null;
+	}
+
+	/** Address the site's public pages redirect to; '' when not set or not a valid http(s) URL. */
+	public static function sanitize_home_redirect( $url ) {
+		$url = trim( (string) $url );
+		if ( '' === $url ) {
+			return '';
+		}
+		if ( ! preg_match( '#^https?://#i', $url ) ) {
+			$url = 'https://' . $url;
+		}
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		$own  = wp_parse_url( home_url(), PHP_URL_HOST );
+		// Redirecting the site to itself would loop.
+		if ( ! $host || strtolower( $host ) === strtolower( (string) $own ) ) {
+			return '';
+		}
+		return esc_url_raw( $url, array( 'http', 'https' ) );
 	}
 
 	public static function sanitize_style( $style ) {
@@ -159,8 +163,8 @@ class GenQR_Settings {
 	}
 
 	/**
-	 * A visitor's full design for one QR code: the preset fields plus the advanced ones
-	 * (margin, error correction, logo size/spacing, transparency) and the chosen logo.
+	 * The full design of one QR code: the preset fields plus the advanced ones
+	 * (margin, error correction, logo size/spacing, transparency).
 	 */
 	public static function sanitize_design( $design ) {
 		$design = is_array( $design ) ? $design : array();
@@ -186,7 +190,7 @@ class GenQR_Settings {
 		);
 	}
 
-	/** Logos as {id, name, url} for the generator; drops deleted attachments. */
+	/** Logos as {id, name, url}; drops deleted attachments. */
 	public static function logos() {
 		$out = array();
 		foreach ( self::get()['logos'] as $id ) {

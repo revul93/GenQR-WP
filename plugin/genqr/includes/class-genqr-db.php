@@ -61,6 +61,7 @@ class GenQR_DB {
 		);
 
 		update_option( 'genqr_db_version', GENQR_DB_VERSION );
+		update_option( 'genqr_flush_rewrite', 1 ); // link rules may have changed with the update
 	}
 
 	public static function activate() {

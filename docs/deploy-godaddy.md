@@ -1,6 +1,6 @@
 # Deploying GenQR to GoDaddy
 
-This guide takes you from a GoDaddy account to a working QR generator on your own domain. It covers both kinds of GoDaddy hosting that run WordPress:
+This guide takes you from a GoDaddy account to working QR codes and short links on your own domain. It covers both kinds of GoDaddy hosting that run WordPress:
 
 | | **Managed Hosting for WordPress** | **Web Hosting (cPanel)** |
 | --- | --- | --- |
@@ -20,7 +20,8 @@ GoDaddy changes its menu names from time to time. If a label below doesn't match
 - **The plugin zip.** Download `genqr-<version>.zip` from the [GitHub releases page](https://github.com/revul93/GenQR-WP/releases). Don't unzip it: WordPress installs the zip as it is.
 - **Your domain** in the same GoDaddy account, or access to its DNS.
 - **Your logo** as a PNG with a transparent background, roughly square, at least 300 × 300 px.
-- **The list of approved websites** visitors may create QR codes for, for example `jeddah-cables.com`.
+- **Your main website's address**, for example `https://www.jeddah-cables.com`. Visitors who open the QR domain itself (not a QR code) are sent there.
+- **Your list of links** if you want to import many codes at once: a CSV or Excel file with link, title and short link text per row.
 
 Requirements: WordPress 6.5 or newer and PHP 8.1 or newer. Both are the default on new GoDaddy sites.
 
@@ -46,7 +47,7 @@ See [Change my PHP version](https://www.godaddy.com/help/change-my-php-version-3
 
 ### A3. (Recommended) Create a staging site
 
-Staging is a private copy of the site where you can test before visitors see anything.
+Staging is a private copy of the site where you can test before anything goes live.
 
 1. In the site's **Settings**, find **Staging site** and click **Create**. See [Set up a staging site](https://www.godaddy.com/help/set-up-a-staging-site-for-my-managed-hosting-for-wordpress-site-12292).
 2. Do **Part C** on the staging site first.
@@ -124,48 +125,47 @@ Everything from here happens in **WordPress admin** (`https://your-domain/wp-adm
 
 1. **Plugins → Add New Plugin → Upload Plugin**.
 2. Choose `genqr-<version>.zip`, click **Install Now**, then **Activate Plugin**.
-3. A **QR Links** menu appears in the left sidebar.
+3. A **QR codes** menu appears in the left sidebar.
 
-### C3. Configure it (QR Links → Settings)
+### C3. Configure it (QR codes → Settings)
 
-Settings has five tabs. One **Save settings** button saves all of them.
+Settings has four tabs. One **Save settings** button saves all of them.
 
 | Tab | What to set |
 | --- | --- |
-| **General** | Leave **Clean layout** on. **Name in the top bar** is "GenQR". **Title above the generator** is, for example, "Jeddah Cables QR Generator". |
-| **Visitors** | **Approved domains**: one per line, e.g. `jeddah-cables.com`. Subdomains are included. **Limit per visitor**: 20 an hour is a sensible start. Choose whether to show the public **All QR codes** page. |
-| **Logos** | Click **Add logos**, upload your logo to the Media Library and select it. Mark the one visitors start with as **Default**. |
-| **Presets** | Edit or add designs. Mark the one the generator starts with as **Default**. |
-| **Short links** | Keep the prefix `go` unless you have a reason. Links look like `https://your-domain/go/abc2345`. Never change it after codes are printed. |
+| **General** | **Send other visitors to**: your main website, e.g. `https://www.jeddah-cables.com`. Anyone opening this site's address (anything except a short link) goes there. Leave empty to show the WordPress site as usual. |
+| **Logos** | Click **Add logos**, upload your logo to the Media Library and select it. Mark the one new codes start with as **Default**. |
+| **Presets** | Edit or add designs. Mark the one new codes start with as **Default**. |
+| **Short links** | Keep the prefix `go` unless you have a reason. Links look like `https://your-domain/go/expo-2026`. Never change it after codes are printed. |
 
 Click **Save settings**.
 
-### C4. Make the generator the homepage
+### C4. Create QR codes
 
-1. In **QR Links → Settings → General**, click **Use the QR generator as the homepage**.
-2. Open your domain in a private browser window. You should see the GenQR top bar and the generator.
-
-To keep the generator off the homepage for now, add a page with the shortcode `[genqr]` instead, and only switch the homepage when you're ready.
+- **One at a time:** **QR codes → Add QR code**. Enter a title, the link, and optionally the **short link text** (what comes after `/go/`; leave empty for a random code). Pick a preset, click **Create QR code**, then **Download** or **Print**.
+- **Many at once:** **QR codes → Import**. Click **Download template**, fill it in Excel (link, title, short link text), save as `.xlsx` or "CSV UTF-8", and choose the file. Check the rows, pick a preset and logo, and click **Import**. Then **Export these QR codes**.
+- **Export later:** in **QR codes**, tick codes and choose **Export QR codes** under Bulk actions (or **Export all QR codes**): a ZIP of image files, or a printable A4 sheet.
 
 ### C5. Test before you print
 
 Do all of these on a phone, on mobile data (not the office Wi-Fi):
 
-1. **Create:** make a QR code for an approved address, download it, and scan it from the screen. It should open the address.
-2. **Change:** in **QR Links**, edit that link's destination to another page and save. Scan the **same** code again: it must open the **new** page.
+1. **Create:** make a QR code, download it, and scan it from the screen. It should open the link.
+2. **Change:** edit that code's link to another page and save. Scan the **same** code again: it must open the **new** page.
    - If it still opens the old page, GoDaddy's cache is serving an old redirect. Flush the cache: on Managed WordPress, use **Flush Cache** in the WordPress admin bar or the GoDaddy dashboard. If it keeps happening, ask GoDaddy support to exclude `/go/*` from caching. GenQR already marks these redirects "do not cache".
-3. **Switch off:** turn the link **Off**. Scanning should show "Link not available". Turn it back on.
-4. **Clicks:** the link's click count should have gone up.
+3. **Switch off:** turn the code **Off**. Scanning should show "Link not available". Turn it back on.
+4. **Scans:** the code's scan count should have gone up.
 5. **Print:** print a code at 3 × 3 cm on the real paper or material, and scan it from about 30 cm away.
-6. **Blocked address:** try creating a code for an address that isn't approved, logged out (private window). It should be refused with a clear message.
+6. **Main address:** open `https://your-domain/` in a private window. It should go to your main website (if you set one in C3).
 
 ---
 
 ## Day-to-day
 
-- **Change where a printed code goes:** **QR Links → All links → Edit**, change **Destination**, save. The change is instant, and the history table records who changed it.
+- **Change where a printed code goes:** **QR codes → Edit**, change **Link (URL)**, save. The change is instant, and the history table records who changed it.
+- **Short link text:** set it when creating a code. It can be changed later, but codes already printed with the old text stop working.
 - **Stop a code:** switch it **Off** (scanning shows "Link not available"), or **Delete** it (scanning shows "Link not found"). Switching off is reversible; deleting isn't.
-- **Export everything:** **QR Links → Export CSV** opens in Excel.
+- **Export:** **Export all QR codes** (images or a printable sheet) or **Export list (CSV)** for Excel.
 
 ## Updating GenQR
 
@@ -181,10 +181,11 @@ If you use a staging site, update staging first, check it, then update productio
 | --- | --- |
 | Short links, titles, destinations, click counts | Table `wp_genqr_links` in the WordPress database |
 | Change history (who changed what, when) | Table `wp_genqr_history` |
-| Settings, presets, approved domains | WordPress option `genqr_settings` |
+| Settings, presets, logos list, main website address | WordPress option `genqr_settings` |
 | Logos | Media Library (`wp-content/uploads`) |
-| QR images and downloads | Not stored. They're made in the visitor's browser. |
-| Visitor IP addresses | Not stored. Only a keyed hash is kept, for the hourly limit. |
+| Each code's design (colours, shapes, logo) | Table `wp_genqr_links`, column `design` |
+| QR images and downloads | Not stored. They're made in the admin's browser when you download or export. |
+| Visitor IP addresses | Not stored. Scans are only counted. |
 
 (`wp_` is your table prefix; it may differ if you changed it.) Deactivating the plugin keeps all data. **Deleting** the plugin from the Plugins page removes the tables and settings for good, so back up first.
 
@@ -193,8 +194,9 @@ If you use a staging site, update staging first, check it, then update productio
 | Symptom | Fix |
 | --- | --- |
 | `/go/…` shows a WordPress "Page not found" | **Settings → Permalinks**: choose **Post name** and click **Save Changes** (this also refreshes the link rules). |
-| Visitors see "QR codes can only be made for these websites" | Add the website to **Settings → Visitors → Approved domains**. |
-| "You have created many QR codes in the last hour" | That visitor reached the hourly limit. Raise it under **Settings → Visitors**, or wait an hour. |
+| "The short link … is already used by another QR code" | Short link text must be unique. Choose another, or leave it empty for a random code. |
+| Import says "Old Excel files (.xls) are not supported" | In Excel, **File → Save As → Excel Workbook (.xlsx)** or **CSV UTF-8**. |
+| Arabic text shows as "????" after importing a CSV | Save the file as **CSV UTF-8** in Excel (or use .xlsx). |
 | A changed destination doesn't take effect | The cache is serving an old redirect. See step 2 of [C5](#c5-test-before-you-print). |
-| The generator page shows the theme's header and footer | Turn on **Clean layout** under **Settings → General**. It applies to the page created by "Use as homepage". |
+| The site's address shows a WordPress page instead of your main website | Set **Settings → General → Send other visitors to**. |
 | "There has been a critical error" after installing | Check the PHP version is 8.1 or newer ([A2](#a2-check-the-php-version) / [B3](#b3-set-the-php-version)). |

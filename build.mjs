@@ -9,7 +9,7 @@ const outdir = 'plugin/genqr/assets/build';
 
 /** @type {import('esbuild').BuildOptions} */
 const options = {
-  entryPoints: { genqr: 'src/main.tsx', 'genqr-admin': 'src/admin.tsx' },
+  entryPoints: { 'genqr-admin': 'src/admin.tsx' },
   outdir,
   bundle: true,
   format: 'esm',

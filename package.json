@@ -19,10 +19,12 @@
   },
   "dependencies": {
     "docx": "^9.12.0",
+    "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",
     "preact": "^11.0.1",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "read-excel-file": "^9.3.12"
   },
   "type": "module",
   "allowScripts": {

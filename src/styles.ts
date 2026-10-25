@@ -50,7 +50,6 @@ export const CSS = `
 .field input.colour::-webkit-color-swatch{border:0;border-radius:2px;height:30px}
 .field input.colour::-moz-color-swatch{border:0;border-radius:2px;height:30px}
 .field input.colour:disabled{opacity:.5;cursor:default}
-.hp{position:absolute;left:-10000px;width:1px;height:1px;opacity:0}
 
 /* Toggle buttons */
 .toggle-group{display:inline-flex;border-radius:8px}
@@ -118,26 +117,6 @@ export const CSS = `
 .alert.success{background:#edf7ed;color:#1e4620}.alert.success>.icon{fill:var(--success)}
 .alert .icon-button{margin:4px -8px 0 0;color:inherit}
 
-/* App shell: top bar like the GenQR web app, or tabs when inside a theme page */
-.app{min-height:100vh;background:#fafafa}
-.appbar{position:sticky;top:0;z-index:10;background:var(--primary);color:#fff;box-shadow:0 2px 4px -1px rgba(0,0,0,.2),0 4px 5px 0 rgba(0,0,0,.14),0 1px 10px 0 rgba(0,0,0,.12)}
-.toolbar{max-width:1200px;margin:0 auto;min-height:64px;padding:0 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
-.brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-size:1.25rem;font-weight:500;letter-spacing:.0075em}
-.brand .icon{width:28px;height:28px}
-.nav{display:flex;gap:4px;flex-wrap:wrap}
-.nav a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:.875rem;font-weight:500;letter-spacing:.02857em;text-transform:uppercase}
-.nav a .icon{width:20px;height:20px}
-.appbar .nav{margin-left:auto}
-.appbar .nav a{color:rgba(255,255,255,.85)}
-.appbar .nav a:hover{background:rgba(255,255,255,.12);color:#fff}
-.appbar .nav a.active{background:rgba(255,255,255,.18);color:#fff}
-.appbar a:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.tabs{border-bottom:1px solid var(--divider);margin-bottom:16px}
-.tabs .nav a{color:var(--text2);border-radius:0;border-bottom:2px solid transparent;padding:10px 16px}
-.tabs .nav a.active{color:var(--primary);border-bottom-color:var(--primary)}
-.app .container{max-width:1200px;margin:0 auto;padding:24px}
-@media (max-width:599.95px){.toolbar{padding:8px 16px;gap:8px;min-height:56px}.app .container{padding:16px}.appbar .nav{margin-left:0}}
-
 /* Presets */
 .swatch{display:inline-block;width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);flex-shrink:0}
 .swatch.big{width:40px;height:40px}
@@ -152,31 +131,28 @@ export const CSS = `
 .advanced-toggle .icon{width:20px;height:20px}
 .advanced-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
-/* All QR codes */
-.space-between{justify-content:space-between}
-.search{width:320px;max-width:100%}
-.empty{text-align:center;color:var(--text2)}
-.cards{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-.card{display:flex;flex-direction:column;overflow:hidden}
-.thumb{border:0;background:#fff;padding:16px 16px 0;cursor:pointer;display:block}
-.thumb img{width:100%;max-width:180px;aspect-ratio:1;display:block;margin:0 auto}
-.card-body{padding:12px 16px 8px;display:flex;flex-direction:column;gap:4px;min-width:0}
-.card-title{font-size:1rem;font-weight:600;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-body .mono{color:var(--primary);text-decoration:none;font-size:.8125rem}
-.card-body .caption a{color:inherit}
-.card-actions{margin:8px 0 8px}
-.split{display:flex;width:100%;border:1px solid color-mix(in srgb,var(--primary) 50%,transparent);border-radius:8px;overflow:hidden}
-.split button{font:inherit;color:var(--primary);background:#fff;border:0;cursor:pointer;display:flex;align-items:center;transition:background-color .15s}
-.split button:hover{background:color-mix(in srgb,var(--primary) 6%,#fff)}
-.split button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
-.split button:disabled{color:var(--disabled);cursor:default}
-.split .icon{width:18px;height:18px;fill:currentColor}
-.split-main{flex:1;min-width:0;gap:8px;padding:7px 12px}
-.split-text{font-size:.875rem;font-weight:500}
-.split-meta{margin-left:auto;font-size:.75rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.05);border-radius:10px;padding:1px 8px}
-.split-more{width:40px;justify-content:center;border-left:1px solid color-mix(in srgb,var(--primary) 30%,transparent)!important;flex-shrink:0}
+/* Short link text field with the site address in front */
+.adorned{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;background:#fff;overflow:hidden}
+.adorned:focus-within{border:2px solid var(--primary);margin:-1px}
+.adorned .adornment{display:flex;align-items:center;padding:0 2px 0 14px;color:var(--text2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.875rem;white-space:nowrap;max-width:55%;overflow:hidden;text-overflow:ellipsis;direction:rtl}
+.field .adorned input[type=text]{border:0!important;border-radius:0;padding:16.5px 14px 16.5px 2px!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-width:0;flex:1}
+.field.has-error .adorned{border-color:var(--error)}
+
+/* Import */
+.body2{font-size:.875rem;line-height:1.5;margin:0;color:var(--text)}
+.file-btn{position:relative;overflow:hidden;cursor:pointer}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.table-wrap{max-height:420px;overflow:auto;border:1px solid var(--divider);border-radius:8px}
+.data-table{border-collapse:collapse;width:100%;font-size:.8125rem}
+.data-table th{position:sticky;top:0;background:#f5f5f5;text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--divider);white-space:nowrap}
+.data-table td{padding:6px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+.data-table td.break{word-break:break-all}
+.data-table tr.bad td{background:#fdeded;color:#5f2120}
+.data-table tr.good td:last-child{color:var(--success);font-weight:600}
+.data-table a{color:var(--primary)}
+.progress{height:6px;border-radius:3px;background:color-mix(in srgb,var(--primary) 18%,#fff);overflow:hidden}
+.progress span{display:block;height:100%;background:var(--primary);transition:width .2s}
 .muted-text{color:var(--disabled);font-weight:400}
-.icon.small{width:18px;height:18px}
 .row.center{justify-content:center}
 
 /* Dialog */

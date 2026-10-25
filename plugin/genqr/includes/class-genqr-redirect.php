@@ -1,6 +1,8 @@
 <?php
 /**
- * Public redirector: https://<site>/<prefix>/<code>  →  302 to the destination.
+ * Public side of the plugin:
+ *   https://<site>/<prefix>/<code>  →  302 to the code's destination
+ *   any other public page            →  302 to the "homepage redirect" address (if set)
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -14,6 +16,18 @@ class GenQR_Redirect {
 		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
 		// Early, before themes or other plugins render anything.
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 0 );
+		add_action( 'template_redirect', array( __CLASS__, 'redirect_site' ), 1 );
+	}
+
+	/** The site has no public pages of its own: send visitors to the company website. */
+	public static function redirect_site() {
+		$target = GenQR_Settings::get()['home_redirect'];
+		if ( '' === $target || is_admin() || wp_doing_ajax() || is_robots() ) {
+			return;
+		}
+		nocache_headers();
+		wp_redirect( $target, 302, 'GenQR' ); // phpcs:ignore WordPress.Security.SafeRedirect -- admin-set address
+		exit;
 	}
 
 	public static function add_rewrite_rule() {
@@ -22,7 +36,7 @@ class GenQR_Redirect {
 			delete_option( 'genqr_flush_rewrite' );
 			add_action( 'wp_loaded', 'flush_rewrite_rules' );
 		}
-		add_rewrite_rule( '^' . preg_quote( GenQR_Settings::prefix(), '/' ) . '/([A-Za-z0-9]{3,32})/?$', 'index.php?' . self::QUERY_VAR . '=$matches[1]', 'top' );
+		add_rewrite_rule( '^' . preg_quote( GenQR_Settings::prefix(), '/' ) . '/([A-Za-z0-9_-]{2,32})/?$', 'index.php?' . self::QUERY_VAR . '=$matches[1]', 'top' );
 	}
 
 	public static function query_vars( $vars ) {

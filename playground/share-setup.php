@@ -4,7 +4,6 @@
  * Reads optional files from /restore (the git-ignored .playground/restore folder):
  *   admin-pass     new password for the "admin" user
  *   settings.json  GenQR settings to apply; "logo_files" lists images in /restore to add as logos
- * and makes the generator the homepage.
  */
 
 require '/wordpress/wp-load.php';
@@ -51,7 +50,7 @@ if ( is_array( $settings ) && $settings ) {
 	GenQR_Settings::update( $settings );
 }
 
-// Links from a previous run (exported from the public list), with the same short codes so
+// Links from a previous run (saved by scripts/share.sh), with the same short codes so
 // QR codes already shared keep working. Logos get new ids on every run: a link that had a
 // logo gets the first logo of this run.
 if ( is_readable( '/restore/links.json' ) ) {
@@ -68,7 +67,7 @@ if ( is_readable( '/restore/links.json' ) ) {
 				'code'        => strtolower( $l['code'] ),
 				'title'       => GenQR_Links::clean_title( $l['title'] ?? '' ),
 				'destination' => esc_url_raw( $l['destination'], array( 'http', 'https' ) ),
-				'is_active'   => 1,
+				'is_active'   => isset( $l['active'] ) ? (int) (bool) $l['active'] : 1,
 				'clicks'      => (int) ( $l['clicks'] ?? 0 ),
 				'created_at'  => $created,
 				'updated_at'  => $created,
@@ -79,17 +78,3 @@ if ( is_readable( '/restore/links.json' ) ) {
 		}
 	}
 }
-
-// Generator as the homepage (same as the "Use as homepage" button).
-$s    = GenQR_Settings::get();
-$page = wp_insert_post(
-	array(
-		'post_type'    => 'page',
-		'post_status'  => 'publish',
-		'post_title'   => $s['brand'],
-		'post_content' => '<!-- wp:shortcode -->[genqr]<!-- /wp:shortcode -->',
-	)
-);
-GenQR_Settings::update( array( 'homepage_id' => (int) $page ) );
-update_option( 'show_on_front', 'page' );
-update_option( 'page_on_front', (int) $page );

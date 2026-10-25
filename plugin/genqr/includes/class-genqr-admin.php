@@ -1,7 +1,9 @@
 <?php
 /**
- * wp-admin screens: QR Links (list, add/edit with history), Settings, CSV export.
- * Everything requires the manage_options capability and a nonce for changes.
+ * wp-admin screens: QR codes list (bulk actions, ZIP/PDF export), Add / Edit QR code (designer
+ * and history), Import, Settings, CSV export. Everything requires manage_options; changes
+ * need a nonce. The designer, import and export run in the browser (assets/build/genqr-admin.js)
+ * and talk to the REST API in class-genqr-rest.php.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -18,9 +20,7 @@ class GenQR_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
 		add_action( 'admin_post_genqr_link_action', array( __CLASS__, 'handle_link_action' ) );
-		add_action( 'admin_post_genqr_save_link', array( __CLASS__, 'handle_save_link' ) );
 		add_action( 'admin_post_genqr_save_settings', array( __CLASS__, 'handle_save_settings' ) );
-		add_action( 'admin_post_genqr_homepage', array( __CLASS__, 'handle_homepage' ) );
 		add_action( 'admin_post_genqr_export', array( __CLASS__, 'handle_export' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( GENQR_FILE ), array( __CLASS__, 'plugin_links' ) );
 	}
@@ -28,15 +28,16 @@ class GenQR_Admin {
 	// --- Menus and helpers ----------------------------------------------------------------------
 
 	public static function menu() {
-		self::$list_hook = add_menu_page( __( 'QR Links', 'genqr' ), __( 'QR Links', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ), 'dashicons-screenoptions', 26 );
-		add_submenu_page( 'genqr', __( 'All links', 'genqr' ), __( 'All links', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ) );
-		add_submenu_page( 'genqr', __( 'Add link', 'genqr' ), __( 'Add link', 'genqr' ), self::CAP, 'genqr-add', array( __CLASS__, 'page_edit' ) );
-		add_submenu_page( 'genqr', __( 'Edit link', 'genqr' ), __( 'Edit link', 'genqr' ), self::CAP, 'genqr-edit', array( __CLASS__, 'page_edit' ) );
+		self::$list_hook = add_menu_page( __( 'QR codes', 'genqr' ), __( 'QR codes', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ), 'dashicons-screenoptions', 26 );
+		add_submenu_page( 'genqr', __( 'All QR codes', 'genqr' ), __( 'All QR codes', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ) );
+		add_submenu_page( 'genqr', __( 'Add QR code', 'genqr' ), __( 'Add QR code', 'genqr' ), self::CAP, 'genqr-add', array( __CLASS__, 'page_add' ) );
+		add_submenu_page( 'genqr', __( 'Import QR codes', 'genqr' ), __( 'Import', 'genqr' ), self::CAP, 'genqr-import', array( __CLASS__, 'page_import' ) );
+		add_submenu_page( 'genqr', __( 'Edit QR code', 'genqr' ), __( 'Edit QR code', 'genqr' ), self::CAP, 'genqr-edit', array( __CLASS__, 'page_edit' ) );
 		add_submenu_page( 'genqr', __( 'QR settings', 'genqr' ), __( 'Settings', 'genqr' ), self::CAP, 'genqr-settings', array( __CLASS__, 'page_settings' ) );
 		add_action( 'load-' . self::$list_hook, array( __CLASS__, 'handle_bulk' ) );
 	}
 
-	/** "Edit link" is reached from the list, not the menu. */
+	/** "Edit QR code" is reached from the list, not the menu. */
 	public static function hide_edit_menu() {
 		remove_submenu_page( 'genqr', 'genqr-edit' );
 	}
@@ -52,12 +53,52 @@ class GenQR_Admin {
 		}
 		if ( false !== strpos( $hook, 'genqr-settings' ) ) {
 			wp_enqueue_media();
+			return;
 		}
-		// The QR preview on the edit screen uses the same browser engine as the public generator.
+		// Designer, import and export: one script module that mounts on the page's element.
 		$bundle = GENQR_DIR . 'assets/build/genqr-admin.js';
-		if ( file_exists( $bundle ) && false !== strpos( $hook, 'genqr-edit' ) ) {
+		if ( file_exists( $bundle ) ) {
 			wp_enqueue_script_module( 'genqr-admin', GENQR_URL . 'assets/build/genqr-admin.js', array(), filemtime( $bundle ) );
 		}
+	}
+
+	/** Everything the admin app needs; written into the mount element's data-config. */
+	public static function client_config() {
+		$s = GenQR_Settings::get();
+		return array(
+			'logos'       => GenQR_Settings::logos(),
+			'defaultLogo' => (int) $s['default_logo'],
+			'style'       => GenQR_Settings::start_style(),
+			'presets'     => array_map(
+				static fn( $p ) => array(
+					'name'  => $p['name'],
+					'style' => GenQR_Settings::sanitize_style( $p['style'] ),
+				),
+				$s['presets']
+			),
+			'api'         => esc_url_raw( rest_url( GenQR_Rest::NS . '/' ) ),
+			'nonce'       => wp_create_nonce( 'wp_rest' ),
+			'shortBase'   => trailingslashit( home_url( '/' . GenQR_Settings::prefix() ) ),
+			'editUrl'     => admin_url( 'admin.php?page=genqr-edit&id=' ),
+			'listUrl'     => admin_url( 'admin.php?page=genqr' ),
+		);
+	}
+
+	/** The mount point for one admin app view. */
+	private static function mount( $view, array $extra = array() ) {
+		$attrs = '';
+		foreach ( $extra as $k => $v ) {
+			$attrs .= sprintf( ' data-%s="%s"', esc_attr( $k ), esc_attr( is_string( $v ) ? $v : wp_json_encode( $v ) ) );
+		}
+		printf(
+			'<div class="genqr-app" data-view="%s" data-config="%s"%s><p>%s</p></div>',
+			esc_attr( $view ),
+			esc_attr( wp_json_encode( self::client_config() ) ),
+			$attrs, // phpcs:ignore WordPress.Security.EscapeOutput -- escaped above
+			file_exists( GENQR_DIR . 'assets/build/genqr-admin.js' )
+				? esc_html__( 'Loading…', 'genqr' )
+				: esc_html__( 'The GenQR script is missing. Install the plugin from a release zip, or run "npm run build".', 'genqr' )
+		);
 	}
 
 	public static function action_url( $do, array $ids ) {
@@ -93,25 +134,14 @@ class GenQR_Admin {
 		// phpcs:ignore WordPress.Security.NonceVerification -- display only
 		$key      = isset( $_GET['genqr_msg'] ) ? sanitize_key( $_GET['genqr_msg'] ) : '';
 		$messages = array(
-			'saved'      => array( 'success', __( 'Link saved.', 'genqr' ) ),
-			'created'    => array( 'success', __( 'Link created.', 'genqr' ) ),
-			'enabled'    => array( 'success', __( 'Links switched on.', 'genqr' ) ),
-			'disabled'   => array( 'success', __( 'Links switched off. Their QR codes now show a "link not available" page.', 'genqr' ) ),
-			'deleted'    => array( 'success', __( 'Links deleted.', 'genqr' ) ),
-			'settings'   => array( 'success', __( 'Settings saved.', 'genqr' ) ),
-			'homepage'   => array( 'success', __( 'The QR generator page is now the site\'s homepage.', 'genqr' ) ),
-			'badprefix'  => array( 'error', __( 'The link prefix must be 1–20 lower-case letters, digits or dashes, and not a WordPress path such as wp-admin.', 'genqr' ) ),
-			'nodomains'  => array( 'warning', __( 'No approved domains: visitors cannot create QR codes until you add at least one.', 'genqr' ) ),
+			'enabled'   => array( 'success', __( 'QR codes switched on.', 'genqr' ) ),
+			'disabled'  => array( 'success', __( 'QR codes switched off. Scanning them now shows a "link not available" page.', 'genqr' ) ),
+			'deleted'   => array( 'success', __( 'QR codes deleted.', 'genqr' ) ),
+			'settings'  => array( 'success', __( 'Settings saved.', 'genqr' ) ),
+			'badprefix' => array( 'error', __( 'The link prefix must be 1–20 lower-case letters, digits or dashes, and not a WordPress path such as wp-admin.', 'genqr' ) ),
 		);
 		if ( isset( $messages[ $key ] ) ) {
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', esc_attr( $messages[ $key ][0] ), esc_html( $messages[ $key ][1] ) );
-		} elseif ( 0 === strpos( $key, 'error-' ) ) {
-			// Validation errors are passed as a transient keyed by user.
-			$error = get_transient( 'genqr_error_' . get_current_user_id() );
-			if ( $error ) {
-				delete_transient( 'genqr_error_' . get_current_user_id() );
-				printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html( $error ) );
-			}
 		}
 		if ( ! get_option( 'permalink_structure' ) && isset( $_GET['page'] ) && 0 === strpos( sanitize_key( $_GET['page'] ), 'genqr' ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			printf(
@@ -129,8 +159,8 @@ class GenQR_Admin {
 	public static function handle_bulk() {
 		$table  = new GenQR_Links_Table();
 		$action = $table->current_action();
-		if ( ! $action || empty( $_REQUEST['ids'] ) ) {
-			return;
+		if ( ! $action || 'export_qr' === $action || empty( $_REQUEST['ids'] ) ) {
+			return; // export_qr is handled in the browser
 		}
 		check_admin_referer( 'bulk-links' );
 		self::require_cap();
@@ -156,7 +186,7 @@ class GenQR_Admin {
 			}
 		}
 		$messages = array( 'delete' => 'deleted', 'enable' => 'enabled', 'disable' => 'disabled' );
-		self::back( admin_url( 'admin.php?page=genqr' ), $messages[ $do ] ?? 'saved' );
+		self::back( admin_url( 'admin.php?page=genqr' ), $messages[ $do ] ?? 'enabled' );
 	}
 
 	public static function page_list() {
@@ -165,20 +195,23 @@ class GenQR_Admin {
 		$table->prepare_items();
 		?>
 		<div class="wrap">
-			<h1 class="wp-heading-inline"><?php esc_html_e( 'QR Links', 'genqr' ); ?></h1>
-			<a href="<?php echo esc_url( admin_url( 'admin.php?page=genqr-add' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Add link', 'genqr' ); ?></a>
-			<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=genqr_export' ), 'genqr_export' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'genqr' ); ?></a>
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'QR codes', 'genqr' ); ?></h1>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=genqr-add' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Add QR code', 'genqr' ); ?></a>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=genqr-import' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Import', 'genqr' ); ?></a>
+			<button type="button" class="page-title-action" id="genqr-export-all"><?php esc_html_e( 'Export all QR codes', 'genqr' ); ?></button>
+			<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=genqr_export' ), 'genqr_export' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Export list (CSV)', 'genqr' ); ?></a>
 			<hr class="wp-header-end">
-			<p><?php esc_html_e( 'Every QR code points to one of these short links. Change a destination here and printed codes follow it immediately.', 'genqr' ); ?></p>
+			<p><?php esc_html_e( 'Every QR code contains one of these short links. Change a destination and printed codes follow it immediately. To export some codes as images or a printable sheet, tick them and choose "Export QR codes" under Bulk actions.', 'genqr' ); ?></p>
+			<?php self::mount( 'export' ); ?>
 			<?php $table->views(); ?>
-			<form method="get">
+			<form method="get" id="genqr-list-form">
 				<input type="hidden" name="page" value="genqr">
 				<?php
 				// phpcs:ignore WordPress.Security.NonceVerification
 				if ( ! empty( $_GET['status'] ) ) {
 					printf( '<input type="hidden" name="status" value="%s">', esc_attr( sanitize_key( $_GET['status'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 				}
-				$table->search_box( __( 'Search links', 'genqr' ), 'genqr-search' );
+				$table->search_box( __( 'Search QR codes', 'genqr' ), 'genqr-search' );
 				$table->display();
 				?>
 			</form>
@@ -186,63 +219,59 @@ class GenQR_Admin {
 		<?php
 	}
 
-	// --- Add / edit --------------------------------------------------------------------------------------
+	// --- Add / edit / import ---------------------------------------------------------------------------
+
+	public static function page_add() {
+		self::require_cap();
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Add QR code', 'genqr' ); ?></h1>
+			<?php self::mount( 'designer' ); ?>
+		</div>
+		<?php
+	}
+
+	public static function page_import() {
+		self::require_cap();
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Import QR codes', 'genqr' ); ?></h1>
+			<?php self::mount( 'import' ); ?>
+		</div>
+		<?php
+	}
 
 	public static function page_edit() {
 		self::require_cap();
 		$id   = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$link = $id ? GenQR_Links::get( $id ) : null;
-		if ( $id && ! $link ) {
-			wp_die( esc_html__( 'Link not found.', 'genqr' ) );
+		if ( ! $link ) {
+			wp_die( esc_html__( 'QR code not found.', 'genqr' ) );
 		}
 		?>
 		<div class="wrap">
-			<h1><?php echo $link ? esc_html__( 'Edit link', 'genqr' ) : esc_html__( 'Add link', 'genqr' ); ?></h1>
-			<div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start">
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="flex:1;min-width:320px;max-width:720px">
-					<input type="hidden" name="action" value="genqr_save_link">
-					<input type="hidden" name="id" value="<?php echo (int) $id; ?>">
-					<?php wp_nonce_field( 'genqr_save_link' ); ?>
-					<table class="form-table" role="presentation">
-						<?php if ( $link ) : ?>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Short link', 'genqr' ); ?></th>
-							<td><code id="genqr-short-url"><?php echo esc_html( GenQR_Settings::short_url( $link->code ) ); ?></code>
-								<p class="description"><?php esc_html_e( 'This is what printed QR codes contain. It never changes.', 'genqr' ); ?></p></td>
-						</tr>
-						<?php endif; ?>
-						<tr>
-							<th scope="row"><label for="genqr-link-title"><?php esc_html_e( 'Title', 'genqr' ); ?></label></th>
-							<td><input type="text" id="genqr-link-title" name="link_title" class="regular-text" maxlength="120" value="<?php echo esc_attr( $link ? $link->title : '' ); ?>">
-								<p class="description"><?php esc_html_e( 'Optional. Shown on the public "All QR codes" page.', 'genqr' ); ?></p></td>
-						</tr>
-						<tr>
-							<th scope="row"><label for="genqr-destination"><?php esc_html_e( 'Destination', 'genqr' ); ?></label></th>
-							<td><input type="url" id="genqr-destination" name="destination" class="large-text" required value="<?php echo esc_attr( $link ? $link->destination : '' ); ?>" placeholder="https://www.example.com/page">
-								<p class="description"><?php esc_html_e( 'Any web address. (Visitors can only use the approved domains; administrators can use any.)', 'genqr' ); ?></p></td>
-						</tr>
-						<?php if ( $link ) : ?>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Status', 'genqr' ); ?></th>
-							<td><label><input type="checkbox" name="is_active" value="1" <?php checked( (int) $link->is_active, 1 ); ?>> <?php esc_html_e( 'Link is on', 'genqr' ); ?></label>
-								<p class="description"><?php esc_html_e( 'When off, scanning shows a "link not available" page.', 'genqr' ); ?></p></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Clicks', 'genqr' ); ?></th>
-							<td><?php echo esc_html( number_format_i18n( (int) $link->clicks ) ); ?><?php echo $link->last_click_at ? ' · ' . esc_html( sprintf( /* translators: %s: date */ __( 'last on %s', 'genqr' ), self::format_date( $link->last_click_at ) ) ) : ''; ?></td>
-						</tr>
-						<?php endif; ?>
-					</table>
-					<?php submit_button( $link ? __( 'Save changes', 'genqr' ) : __( 'Create link', 'genqr' ) ); ?>
-				</form>
-				<?php if ( $link ) : ?>
-				<div style="width:260px">
-					<div id="genqr-admin-preview" data-short-url="<?php echo esc_attr( GenQR_Settings::short_url( $link->code ) ); ?>" data-title="<?php echo esc_attr( $link->title ? $link->title : 'qr-' . $link->code ); ?>" data-config="<?php echo esc_attr( wp_json_encode( GenQR_Shortcode::client_config() ) ); ?>" data-link="<?php echo esc_attr( wp_json_encode( GenQR_Links::to_public( $link ) ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:4px;padding:12px;text-align:center"></div>
-				</div>
-				<?php endif; ?>
-			</div>
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Edit QR code', 'genqr' ); ?></h1>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=genqr-add' ) ); ?>" class="page-title-action"><?php esc_html_e( 'Add QR code', 'genqr' ); ?></a>
+			<hr class="wp-header-end">
+			<?php self::mount( 'designer', array( 'link' => GenQR_Links::to_api( $link ) ) ); ?>
 
-			<?php if ( $link ) : ?>
+			<h2><?php esc_html_e( 'Scans', 'genqr' ); ?></h2>
+			<p>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: 1: number of scans, 2: date */
+						_n( '%1$s scan since %2$s.', '%1$s scans since %2$s.', (int) $link->clicks, 'genqr' ),
+						number_format_i18n( (int) $link->clicks ),
+						self::format_date( $link->created_at )
+					)
+				);
+				if ( $link->last_click_at ) {
+					echo ' ' . esc_html( sprintf( /* translators: %s: date */ __( 'Last scan: %s.', 'genqr' ), self::format_date( $link->last_click_at ) ) );
+				}
+				?>
+			</p>
+
 			<h2><?php esc_html_e( 'History', 'genqr' ); ?></h2>
 			<?php $history = GenQR_Links::history( $link->id ); ?>
 			<table class="widefat striped" style="max-width:1000px">
@@ -258,8 +287,10 @@ class GenQR_Admin {
 						<td style="word-break:break-all">
 							<?php
 							if ( 'title' === $h->field ) {
-									echo esc_html( sprintf( /* translators: 1: old title 2: new title */ __( 'Title: "%1$s" → "%2$s"', 'genqr' ), $h->old_value, $h->new_value ) );
-								} elseif ( 'destination' === $h->field ) {
+								echo esc_html( sprintf( /* translators: 1: old title 2: new title */ __( 'Title: "%1$s" → "%2$s"', 'genqr' ), $h->old_value, $h->new_value ) );
+							} elseif ( 'code' === $h->field ) {
+								echo esc_html( sprintf( /* translators: 1: old short link 2: new short link */ __( 'Short link: /%1$s → /%2$s (codes printed with the old link stopped working)', 'genqr' ), $h->old_value, $h->new_value ) );
+							} elseif ( 'destination' === $h->field ) {
 								echo esc_html( sprintf( /* translators: 1: old URL 2: new URL */ __( 'Destination: %1$s → %2$s', 'genqr' ), $h->old_value, $h->new_value ) );
 							} else {
 								echo 'on' === $h->new_value ? esc_html__( 'Switched on', 'genqr' ) : esc_html__( 'Switched off', 'genqr' );
@@ -271,38 +302,8 @@ class GenQR_Admin {
 				<?php endforeach; ?>
 				</tbody>
 			</table>
-			<?php endif; ?>
 		</div>
 		<?php
-	}
-
-	public static function handle_save_link() {
-		check_admin_referer( 'genqr_save_link' );
-		self::require_cap();
-		$id          = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
-		$destination = GenQR_Links::validate_destination( isset( $_POST['destination'] ) ? sanitize_text_field( wp_unslash( $_POST['destination'] ) ) : '', false );
-		$return      = $id ? admin_url( 'admin.php?page=genqr-edit&id=' . $id ) : admin_url( 'admin.php?page=genqr-add' );
-		if ( is_wp_error( $destination ) ) {
-			set_transient( 'genqr_error_' . get_current_user_id(), $destination->get_error_message(), 60 );
-			self::back( $return, 'error-destination' );
-		}
-		if ( $id ) {
-			$result = GenQR_Links::update(
-				$id,
-				array(
-					'title'       => isset( $_POST['link_title'] ) ? wp_unslash( $_POST['link_title'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- clean_title()
-					'destination' => $destination,
-					'is_active'   => empty( $_POST['is_active'] ) ? 0 : 1,
-				)
-			);
-			self::back( $return, is_wp_error( $result ) ? 'error-save' : 'saved' );
-		}
-		$link = GenQR_Links::create( $destination, get_current_user_id(), null, isset( $_POST['link_title'] ) ? wp_unslash( $_POST['link_title'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- clean_title()
-		if ( is_wp_error( $link ) ) {
-			set_transient( 'genqr_error_' . get_current_user_id(), $link->get_error_message(), 60 );
-			self::back( $return, 'error-create' );
-		}
-		self::back( admin_url( 'admin.php?page=genqr-edit&id=' . (int) $link->id ), 'created' );
 	}
 
 	// --- Settings ---------------------------------------------------------------------------------------
@@ -311,12 +312,8 @@ class GenQR_Admin {
 		self::require_cap();
 		$s       = GenQR_Settings::get();
 		$logos   = GenQR_Settings::logos();
-		$home    = (int) get_option( 'page_on_front' );
-		$page    = $s['homepage_id'] ? get_post( (int) $s['homepage_id'] ) : null;
-		$is_home = $page && $home === (int) $page->ID && 'page' === get_option( 'show_on_front' );
 		$tabs    = array(
 			'general'  => __( 'General', 'genqr' ),
-			'visitors' => __( 'Visitors', 'genqr' ),
 			'logos'    => __( 'Logos', 'genqr' ),
 			'presets'  => __( 'Presets', 'genqr' ),
 			'links'    => __( 'Short links', 'genqr' ),
@@ -324,9 +321,6 @@ class GenQR_Admin {
 		?>
 		<div class="wrap genqr-settings">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'QR settings', 'genqr' ); ?></h1>
-			<?php if ( $page && 'publish' === $page->post_status ) : ?>
-				<a href="<?php echo esc_url( get_permalink( $page ) ); ?>" class="page-title-action" target="_blank"><?php esc_html_e( 'View generator page', 'genqr' ); ?></a>
-			<?php endif; ?>
 			<hr class="wp-header-end">
 
 			<nav class="nav-tab-wrapper genqr-tabs" aria-label="<?php esc_attr_e( 'Settings sections', 'genqr' ); ?>">
@@ -335,62 +329,18 @@ class GenQR_Admin {
 				<?php endforeach; ?>
 			</nav>
 
-			<!-- Separate form for the homepage button (forms cannot be nested). -->
-			<form id="genqr-homepage-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="genqr_homepage">
-				<?php wp_nonce_field( 'genqr_homepage' ); ?>
-			</form>
-
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="genqr-settings-form">
 				<input type="hidden" name="action" value="genqr_save_settings">
 				<?php wp_nonce_field( 'genqr_save_settings' ); ?>
 
 				<section class="genqr-panel" data-panel="general">
 					<div class="genqr-card">
-						<h2><?php esc_html_e( 'Generator page', 'genqr' ); ?></h2>
-						<?php if ( $is_home ) : ?>
-							<p class="genqr-status ok"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e( 'The QR generator is the site\'s homepage.', 'genqr' ); ?></p>
-						<?php else : ?>
-							<p><?php esc_html_e( 'Create the generator page and make it the homepage in one click, or add the shortcode [genqr] to any page yourself.', 'genqr' ); ?></p>
-							<p><button type="submit" form="genqr-homepage-form" class="button button-secondary"><?php esc_html_e( 'Use the QR generator as the homepage', 'genqr' ); ?></button></p>
-						<?php endif; ?>
+						<h2><?php esc_html_e( 'Public site', 'genqr' ); ?></h2>
+						<p class="description"><?php esc_html_e( 'QR codes are created by administrators here in wp-admin. On the public site, short links redirect to their destinations; every other page of this site can send visitors to your main website.', 'genqr' ); ?></p>
 						<div class="genqr-field">
-							<label class="genqr-check"><input type="checkbox" name="full_page" value="1" <?php checked( $s['full_page'] ); ?>> <?php esc_html_e( 'Clean layout', 'genqr' ); ?></label>
-							<p class="description"><?php esc_html_e( 'The generator page shows only the top bar and the generator, without the theme\'s header, menu and footer.', 'genqr' ); ?></p>
-						</div>
-					</div>
-					<div class="genqr-card">
-						<h2><?php esc_html_e( 'Names', 'genqr' ); ?></h2>
-						<div class="genqr-field">
-							<label for="genqr-brand"><?php esc_html_e( 'Name in the top bar', 'genqr' ); ?></label>
-							<input type="text" id="genqr-brand" name="brand" class="regular-text" value="<?php echo esc_attr( $s['brand'] ); ?>">
-							<p class="description"><?php esc_html_e( 'Also shown in the browser tab.', 'genqr' ); ?></p>
-						</div>
-						<div class="genqr-field">
-							<label for="genqr-title"><?php esc_html_e( 'Title above the generator', 'genqr' ); ?></label>
-							<input type="text" id="genqr-title" name="title" class="regular-text" value="<?php echo esc_attr( $s['title'] ); ?>">
-						</div>
-					</div>
-				</section>
-
-				<section class="genqr-panel" data-panel="visitors">
-					<div class="genqr-card">
-						<h2><?php esc_html_e( 'What visitors can create', 'genqr' ); ?></h2>
-						<div class="genqr-field">
-							<label for="genqr-domains"><?php esc_html_e( 'Approved domains', 'genqr' ); ?></label>
-							<textarea id="genqr-domains" name="domains" rows="5" class="large-text code" placeholder="jeddah-cables.com"><?php echo esc_textarea( implode( "\n", $s['domains'] ) ); ?></textarea>
-							<p class="description"><?php esc_html_e( 'One per line. Visitors can only make QR codes for these websites (subdomains included). Administrators can link anywhere.', 'genqr' ); ?></p>
-						</div>
-						<div class="genqr-field">
-							<label for="genqr-rate"><?php esc_html_e( 'Limit per visitor', 'genqr' ); ?></label>
-							<span><input type="number" id="genqr-rate" name="rate_limit" min="1" max="1000" value="<?php echo (int) $s['rate_limit']; ?>" class="small-text"> <?php esc_html_e( 'new QR codes per hour', 'genqr' ); ?></span>
-						</div>
-					</div>
-					<div class="genqr-card">
-						<h2><?php esc_html_e( 'All QR codes page', 'genqr' ); ?></h2>
-						<div class="genqr-field">
-							<label class="genqr-check"><input type="checkbox" name="public_list" value="1" <?php checked( $s['public_list'] ); ?>> <?php esc_html_e( 'Show the "All QR codes" page', 'genqr' ); ?></label>
-							<p class="description"><?php esc_html_e( 'Anyone can browse and search every active QR code: its title, short link and destination, and download it again.', 'genqr' ); ?></p>
+							<label for="genqr-home-redirect"><?php esc_html_e( 'Send other visitors to', 'genqr' ); ?></label>
+							<input type="text" inputmode="url" id="genqr-home-redirect" name="home_redirect" class="regular-text" placeholder="https://www.jeddah-cables.com" value="<?php echo esc_attr( $s['home_redirect'] ); ?>">
+							<p class="description"><?php esc_html_e( 'Anyone who opens this site\'s address (or any page other than a short link) is redirected here. Leave empty to show the site as WordPress normally does. wp-admin is not affected.', 'genqr' ); ?></p>
 						</div>
 					</div>
 				</section>
@@ -398,7 +348,7 @@ class GenQR_Admin {
 				<section class="genqr-panel" data-panel="logos">
 					<div class="genqr-card">
 						<h2><?php esc_html_e( 'Logos', 'genqr' ); ?></h2>
-						<p class="description"><?php esc_html_e( 'Visitors can put one of these logos in the centre of their QR code. Square images with a transparent background work best.', 'genqr' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Logos you can put in the centre of a QR code. Square images with a transparent background work best.', 'genqr' ); ?></p>
 						<input type="hidden" id="genqr-logos" name="logos" value="<?php echo esc_attr( implode( ',', wp_list_pluck( $logos, 'id' ) ) ); ?>">
 						<div id="genqr-logo-list" class="genqr-grid genqr-logo-grid">
 							<label class="genqr-tile genqr-logo-none">
@@ -421,7 +371,7 @@ class GenQR_Admin {
 				<section class="genqr-panel" data-panel="presets">
 					<div class="genqr-card">
 						<h2><?php esc_html_e( 'Presets', 'genqr' ); ?></h2>
-						<p class="description"><?php esc_html_e( 'Ready-made designs visitors pick with one click. The generator starts with the default one. Visitors can still change colours and shapes under "Advanced".', 'genqr' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Ready-made designs to pick with one click when adding or importing QR codes. New codes start with the default one; colours and shapes stay editable under "Advanced".', 'genqr' ); ?></p>
 						<div id="genqr-preset-rows" class="genqr-grid genqr-preset-grid">
 							<?php foreach ( $s['presets'] as $i => $preset ) : ?>
 								<?php self::preset_card( (string) $i, $preset, (int) $s['default_preset'] === (int) $i ); ?>
@@ -652,15 +602,10 @@ class GenQR_Admin {
 		$logos = array_values( array_filter( array_map( 'intval', explode( ',', isset( $_POST['logos'] ) ? sanitize_text_field( wp_unslash( $_POST['logos'] ) ) : '' ) ), 'wp_attachment_is_image' ) );
 		$default_logo = isset( $_POST['default_logo'] ) ? (int) $_POST['default_logo'] : 0;
 		$values = array(
-			'title'        => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ),
-			'brand'        => sanitize_text_field( wp_unslash( $_POST['brand'] ?? '' ) ),
-			'full_page'    => ! empty( $_POST['full_page'] ),
-			'public_list'  => ! empty( $_POST['public_list'] ),
-			'domains'      => GenQR_Settings::sanitize_domains( wp_unslash( $_POST['domains'] ?? '' ) ),
-			'logos'        => $logos,
-			'default_logo' => in_array( $default_logo, $logos, true ) ? $default_logo : 0,
-			'prefix'       => $prefix,
-			'rate_limit'   => max( 1, min( 1000, (int) ( $_POST['rate_limit'] ?? 20 ) ) ),
+			'home_redirect' => GenQR_Settings::sanitize_home_redirect( wp_unslash( $_POST['home_redirect'] ?? '' ) ),
+			'logos'         => $logos,
+			'default_logo'  => in_array( $default_logo, $logos, true ) ? $default_logo : 0,
+			'prefix'        => $prefix,
 		);
 		// Presets: keep the posted order; unnamed rows are dropped, so map the default to its new index.
 		$posted      = is_array( $_POST['presets'] ?? null ) ? wp_unslash( $_POST['presets'] ) : array();
@@ -687,34 +632,7 @@ class GenQR_Admin {
 			// Rules are registered on init with the prefix of that request; flush on the next one.
 			update_option( 'genqr_flush_rewrite', 1 );
 		}
-		self::back( $return, $values['domains'] ? 'settings' : 'nodomains' );
-	}
-
-	/** Creates the generator page (if needed) and sets it as the static front page. */
-	public static function handle_homepage() {
-		check_admin_referer( 'genqr_homepage' );
-		self::require_cap();
-		$s    = GenQR_Settings::get();
-		$page = $s['homepage_id'] ? get_post( (int) $s['homepage_id'] ) : null;
-		if ( ! $page || 'trash' === $page->post_status ) {
-			$id = wp_insert_post(
-				array(
-					'post_type'    => 'page',
-					'post_status'  => 'publish',
-					'post_title'   => $s['brand'],
-					'post_content' => '<!-- wp:shortcode -->[genqr]<!-- /wp:shortcode -->',
-				)
-			);
-			GenQR_Settings::update( array( 'homepage_id' => (int) $id ) );
-		} else {
-			$id = $page->ID;
-			if ( 'publish' !== $page->post_status ) {
-				wp_update_post( array( 'ID' => $id, 'post_status' => 'publish' ) );
-			}
-		}
-		update_option( 'show_on_front', 'page' );
-		update_option( 'page_on_front', (int) $id );
-		self::back( admin_url( 'admin.php?page=genqr-settings' ), 'homepage' );
+		self::back( $return, 'settings' );
 	}
 
 	// --- Export -------------------------------------------------------------------------------------------
@@ -728,7 +646,7 @@ class GenQR_Admin {
 		header( 'Content-Disposition: attachment; filename=qr-links-' . gmdate( 'Y-m-d' ) . '.csv' );
 		$out = fopen( 'php://output', 'w' );
 		fwrite( $out, "\xEF\xBB\xBF" ); // BOM so Excel reads UTF-8
-		fputcsv( $out, array( 'short_url', 'destination', 'status', 'clicks', 'last_click_utc', 'created_utc', 'created_by' ) );
+		fputcsv( $out, array( 'title', 'short_link_text', 'short_url', 'destination', 'status', 'clicks', 'last_click_utc', 'created_utc' ) );
 		// Spreadsheets would run cells starting with = + - @ as formulas.
 		$cell = static fn( $v ) => preg_match( '/^[=+\-@\t\r]/', (string) $v ) ? "'" . $v : (string) $v;
 		foreach ( $rows as $r ) {
@@ -736,7 +654,7 @@ class GenQR_Admin {
 				$out,
 				array_map(
 					$cell,
-					array( GenQR_Settings::short_url( $r->code ), $r->destination, $r->is_active ? 'on' : 'off', $r->clicks, $r->last_click_at, $r->created_at, $r->created_by ? 'admin' : 'visitor' )
+					array( $r->title, $r->code, GenQR_Settings::short_url( $r->code ), $r->destination, $r->is_active ? 'on' : 'off', $r->clicks, $r->last_click_at, $r->created_at )
 				)
 			);
 		}

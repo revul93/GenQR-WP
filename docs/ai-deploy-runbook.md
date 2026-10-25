@@ -1,6 +1,6 @@
 # GenQR deployment runbook (for an AI agent)
 
-You are deploying the **GenQR** WordPress plugin to a GoDaddy-hosted WordPress site and configuring it. Follow this document in order. Each step says what to do, how to verify it, and when to stop and ask the human.
+You are deploying the **GenQR** WordPress plugin to a GoDaddy-hosted WordPress site and configuring it. GenQR lets administrators create, import and export QR codes in wp-admin; the public site only redirects short links (`/go/<code>`). Follow this document in order. Each step says what to do, how to verify it, and when to stop and ask the human.
 
 The human-oriented version of these steps, with more background, is [deploy-godaddy.md](deploy-godaddy.md).
 
@@ -16,7 +16,7 @@ The human-oriented version of these steps, with more background, is [deploy-goda
    - delete anything: files, databases, pages, posts, plugins, sites
    - change the WordPress or site URL of a site that is already live
    - push a staging site to production
-   - change the site's homepage on a site that already has content
+   - set "Send other visitors to" on a site that already has public content (it redirects every public page)
    - deactivate or delete any plugin other than GenQR
 5. **Stay in scope.** Don't change themes, other plugins, users, email, billing or account settings, except where a step below says so.
 6. **Verify, then report.** After each part, check the expected result. If a check fails twice, stop and report what you saw (error text, URL, the screen you were on). Don't guess or improvise around errors.
@@ -35,14 +35,11 @@ Ask for anything missing before you start. Values marked *secret* follow rule 1.
 | 3 | Hosting product to use | "Managed Hosting for WordPress" or "Web Hosting (cPanel)" | If unsure, look in My Products (step 2.1) and confirm with the human |
 | 4 | Existing WordPress? | "new site" or "use the existing site at …" | If existing: its WordPress admin login (*secret*) |
 | 5 | WordPress admin for a new site | username + email | Generate a strong password yourself and give it to the human privately (see 4.4) |
-| 6 | Approved domains | `jeddah-cables.com`, `jeddah-cables.com.sa` | Websites visitors may create QR codes for |
+| 6 | Main website to send other visitors to | `https://www.jeddah-cables.com` | Everything on the QR domain except `/go/` links redirects there; can be "none" |
 | 7 | Logo file | a PNG, square, transparent background | Ask the human to provide it or point to it |
-| 8 | Title above the generator | `Jeddah Cables QR Generator` | |
-| 9 | Name in the top bar | `GenQR` | |
-| 10 | Public "All QR codes" page | yes / no | Default yes |
-| 11 | Make the generator the homepage? | yes / no | Required "yes" from the human if the site already has a homepage |
+| 8 | List of links to import (optional) | an .xlsx or CSV file: link, title, short link text | The Import screen has a template |
 
-**Release to install:** `genqr-0.1.0.zip` (or the newest release) from https://github.com/revul93/GenQR-WP/releases. Download it once and keep it as a zip; WordPress installs the zip as is.
+**Release to install:** `genqr-0.2.0.zip` (or the newest release) from https://github.com/revul93/GenQR-WP/releases. Download it once and keep it as a zip; WordPress installs the zip as is.
 
 ---
 
@@ -150,90 +147,70 @@ All in WordPress admin: `https://<domain>/wp-admin`.
 1. **Plugins → Add New Plugin → Upload Plugin** → choose `genqr-<version>.zip` → **Install Now** → **Activate Plugin**.
 2. If GenQR is already installed (an update), WordPress offers **Replace current with uploaded**: choose it. Data is kept.
 
-**Verify:** a **QR Links** menu appears in the sidebar, and `https://<domain>/wp-json/genqr/v1/config` returns JSON that starts with `{"title":`.
+**Verify:** a **QR codes** menu appears in the sidebar with **All QR codes, Add QR code, Import, Settings**.
 
-### C3. Configure (QR Links → Settings)
+### C3. Configure (QR codes → Settings)
 
-The page has tabs: **General, Visitors, Logos, Presets, Short links**. One **Save settings** button at the bottom saves all tabs. Fill everything, then save once.
+The page has tabs: **General, Logos, Presets, Short links**. One **Save settings** button at the bottom saves all tabs. Fill everything, then save once.
 
 | Tab | Field | Value |
 | --- | --- | --- |
-| General | Clean layout | ticked |
-| General | Name in the top bar | input 9 |
-| General | Title above the generator | input 8 |
-| Visitors | Approved domains | input 6, one per line (no `https://`, no paths) |
-| Visitors | Limit per visitor | `20` |
-| Visitors | Show the "All QR codes" page | input 10 |
+| General | Send other visitors to | input 6 (e.g. `https://www.jeddah-cables.com`); leave empty if the human said none |
 | Logos | Add logos | upload input 7 through the media dialog, select it, **Use these logos**; then tick **Default** on it |
 | Presets | (leave as shipped) | Black (default), Indigo, Lagoon, Coral, Emerald. Change only if the human asked |
 | Short links | Link prefix | leave `go` |
 
 Click **Save settings**.
 
-**Verify:** the notice "Settings saved." appears, and `https://<domain>/wp-json/genqr/v1/config` shows the approved domains, the logo (in `logos`), `"brand"` and `"title"` as set.
+**Verify:** the notice "Settings saved." appears. If input 6 was set, `https://<domain>/` in a private window redirects to it (rule 4 applies if the site already had public content).
 
-### C4. Homepage
+### C4. Create the QR codes
 
-Only if input 11 is "yes":
-
-1. **QR Links → Settings → General** → **Use the QR generator as the homepage**.
-2. If the site already had a homepage with content, you must have the human's explicit yes first (rule 4).
-
-If input 11 is "no": create a page (**Pages → Add New**), title `GenQR`, content: a Shortcode block with `[genqr]`, publish it, and report its URL.
-
-**Verify:** `https://<domain>/` (or the page URL) shows a top bar with the brand name and the generator, in a private/incognito window (not logged in).
+- If the human gave a list (input 8): **QR codes → Import** → **Choose file…** → check the rows table (rows with problems are listed with the reason; report them) → pick the preset the human asked for (default Black) → **Import N QR codes**. When done, note how many were created and any failures.
+- Otherwise create one code to test: **QR codes → Add QR code** → Title `Deployment check`, Link = input 6 or `https://www.example.com`, Short link text `deployment-check` → **Create QR code**.
 
 ### C5. Functional checks
 
-Run these and record each result. `<domain>` is the final domain, and `<approved>` is the first approved domain.
+Run these and record each result. `<domain>` is the final domain.
 
-1. **API is up**
-
-   ```bash
-   curl -s https://<domain>/wp-json/genqr/v1/config
-   ```
-
-   Expect JSON with your approved domains.
-
-2. **Visitor can create a link**
+1. **Redirect works and is not cached**
 
    ```bash
-   curl -s -X POST -H 'Content-Type: application/json' -d '{"url":"https://<approved>/","title":"Deployment check"}' https://<domain>/wp-json/genqr/v1/links
+   curl -sI https://<domain>/go/deployment-check
    ```
 
-   Expect JSON with a `"code"` and a `"shortUrl"` like `https://<domain>/go/abc2345`.
+   Expect `HTTP/… 302`, a `Location:` with the code's link, and `Cache-Control: no-store…`.
 
-3. **Unapproved site refused**
+2. **Unknown code**
 
    ```bash
-   curl -s -X POST -H 'Content-Type: application/json' -d '{"url":"https://example.org/"}' https://<domain>/wp-json/genqr/v1/links
+   curl -s -o /dev/null -w '%{http_code}' https://<domain>/go/does-not-exist
    ```
 
-   Expect `"code":"genqr_domain"`.
+   Expect `404`.
 
-4. **Redirect works and is not cached**
+3. **API closed to the public**
 
    ```bash
-   curl -sI -A "Mozilla/5.0" https://<domain>/go/<code>
+   curl -s -o /dev/null -w '%{http_code}' https://<domain>/wp-json/genqr/v1/links
    ```
 
-   Expect `HTTP/… 302`, `Location: https://<approved>/`, and `Cache-Control: no-store…`.
+   Expect `401`.
 
-5. **Destination change takes effect immediately.** In **QR Links → All links**, edit the "Deployment check" link, set Destination to another page on `<approved>`, save, and rerun check 4. `Location` must show the new address.
+4. **Destination change takes effect immediately.** In **QR codes**, edit "Deployment check", change **Link (URL)** to another page, **Save changes**, and rerun check 1. `Location` must show the new address.
    - If it still shows the old one: on Managed WordPress, flush the cache (admin bar **Flush Cache** or the GoDaddy dashboard) and retry once. If it's still old, report it: GoDaddy support must exclude `/go/*` from caching.
-6. **Switched-off link.** Switch the link **Off**, rerun check 4: expect `410`. Switch it back **On**.
-7. **Clean up.** Delete the "Deployment check" link (**QR Links → All links → Delete**). This test link is yours to delete; no confirmation is needed.
-8. **Browser check.** In a private window, open the homepage. Type an approved address, click **Create QR code**, and confirm the preview shows "Scan check passed" and that the **PNG · 1024 px** download produces a file. Delete that test link afterwards too.
+5. **Switched-off code.** Switch it **Off**, **Save changes**, rerun check 1: expect `410`. Switch it back **On** and save.
+6. **Export.** In **QR codes**, tick the code(s), Bulk actions → **Export QR codes** → **Apply**: a ZIP downloads. Also try **Printable sheet**: a PDF downloads.
+7. **Clean up.** Delete the "Deployment check" code (row action **Delete**). This test code is yours to delete; no confirmation is needed. Don't delete imported codes.
 
 ### C6. Common failures
 
 | Symptom | Action |
 | --- | --- |
-| `/go/<code>` returns the WordPress 404 page | **Settings → Permalinks** → **Save Changes** (no change needed), then retry check 4 |
+| `/go/<code>` returns the WordPress 404 page | **Settings → Permalinks** → **Save Changes** (no change needed), then retry check 1 |
 | Plugin activation fails, or "There has been a critical error" | Check PHP ≥ 8.1 (A2 / B3) and WordPress ≥ 6.5 (**Dashboard → Updates**). Report the exact error |
-| `wp-json` URLs return 404 | Permalinks are "Plain"; fix C1.1 |
-| Generator page shows the theme header/footer | Tick **Clean layout** (C3), and make sure the page is the one created by **Use as homepage** |
-| `rest_forbidden` (401) on GET `/wp-json/genqr/v1/links` | The public list is switched off; expected if input 10 is "no" |
+| The Add / Import screens say "The GenQR script is missing" | The zip was built wrongly: use the release zip, not GitHub's "Source code" zip |
+| "Your session has expired" in Add / Import | Reload the page and retry |
 | A security or firewall plugin blocks `wp-json` | Don't change it. Report it to the human with the plugin's name |
 
 ---
@@ -242,12 +219,12 @@ Run these and record each result. `<domain>` is the final domain, and `<approved
 
 When everything passes, reply with this, filled in. Leave out passwords except as noted in point 4.
 
-1. **Site:** `https://<domain>/` (generator) and `https://<domain>/wp-admin`
+1. **Site:** `https://<domain>/wp-admin` (QR codes menu) and where `https://<domain>/` redirects
 2. **Hosting:** product and plan, PHP version, staging used (yes/no)
-3. **GenQR:** version installed, approved domains, logo set, homepage (yes/no or page URL), public list (on/off)
+3. **GenQR:** version installed, main website redirect, logo set, codes imported (count, failures)
 4. **New WordPress admin** (only if you created one): username. Give the generated password once, in a private message, and tell the human to store it in a password manager and change it if this conversation is shared.
-5. **Checks C5.1–C5.8:** pass/fail for each, with details for any failure
-6. **Cache:** whether destination changes took effect immediately (C5.5)
+5. **Checks C5.1–C5.7:** pass/fail for each, with details for any failure
+6. **Cache:** whether destination changes took effect immediately (C5.4)
 7. **Backups:** what exists, and the B5 warning if cPanel
 8. **Anything skipped or needing the human:** DNS, staging push, purchases, 2FA prompts, errors
 
@@ -257,9 +234,10 @@ When everything passes, reply with this, filled in. Leave out passwords except a
 | --- | --- |
 | Short links, titles, destinations, clicks | Database table `<prefix>genqr_links` |
 | Change history | Table `<prefix>genqr_history` |
-| Settings, presets, approved domains | WordPress option `genqr_settings` |
+| Settings, presets, main website address | WordPress option `genqr_settings` |
+| Each code's design | Table `<prefix>genqr_links`, column `design` |
 | Logos | Media Library |
-| QR images | Not stored (made in the visitor's browser) |
-| Visitor IP addresses | Not stored (only a keyed hash, for the hourly limit) |
+| QR images | Not stored (made in the admin's browser on download/export) |
+| Visitor IP addresses | Not stored (scans are only counted) |
 
 Deleting the plugin from the Plugins page removes its tables and settings permanently. Never delete it on a live site without the human's explicit yes (rule 4).

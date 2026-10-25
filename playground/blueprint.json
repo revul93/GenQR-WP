@@ -1,6 +1,6 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/wp-admin/admin.php?page=genqr-settings",
+  "landingPage": "/wp-admin/admin.php?page=genqr",
   "preferredVersions": { "php": "8.3", "wp": "latest" },
   "steps": [
     { "step": "setSiteOptions", "options": { "blogname": "GenQR test site", "permalink_structure": "/%postname%/" } },

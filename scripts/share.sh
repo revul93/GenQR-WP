@@ -16,20 +16,30 @@ mkdir -p .playground/restore
 if curl -s -o /dev/null --max-time 60 http://127.0.0.1:9400/wp-json/ || [ -n "$(netstat -an 2>/dev/null | grep -E '[:.]9400 .*LISTEN')" ]; then
   OLD=$(sed 's#https://##' .playground/site-url 2>/dev/null || true)
   node -e '
-    const host = process.argv[1];
+    // The list API is admin-only: log in as the admin (cookies + REST nonce), then page through it.
+    const [host, pass] = process.argv.slice(1);
+    const base = "http://127.0.0.1:9400";
+    const headers = host ? { Host: host } : {};
+    const cookies = [];
+    const keep = (r) => r.headers.getSetCookie().forEach((c) => cookies.push(c.split(";")[0]));
+    const opts = (extra = {}) => ({ redirect: "manual", signal: AbortSignal.timeout(90000), ...extra, headers: { ...headers, Cookie: cookies.join("; "), ...(extra.headers || {}) } });
     (async () => {
-      let page = 1, items = [];
+      keep(await fetch(base + "/wp-login.php", opts()));
+      keep(await fetch(base + "/wp-login.php", opts({ method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ log: "admin", pwd: pass, testcookie: "1" }) })));
+      const page = await (await fetch(base + "/wp-admin/admin.php?page=genqr-add", opts())).text();
+      const nonce = (page.match(/&quot;nonce&quot;:&quot;([a-f0-9]+)/) || [])[1];
+      if (!nonce) throw new Error("could not log in as admin");
+      let p = 1, items = [];
       for (;;) {
-        const r = await fetch("http://127.0.0.1:9400/wp-json/genqr/v1/links?page=" + page, { headers: host ? { Host: host } : {}, signal: AbortSignal.timeout(90000) });
-        const j = await r.json();
+        const j = await (await fetch(base + "/wp-json/genqr/v1/links?page=" + p, opts({ headers: { "X-WP-Nonce": nonce } }))).json();
         items.push(...(j.items || []));
-        if (page >= (j.pages || 1)) break;
-        page++;
+        if (p >= (j.pages || 1)) break;
+        p++;
       }
       require("fs").writeFileSync(".playground/restore/links.json", JSON.stringify(items, null, 1));
       console.log("Saved " + items.length + " links from the running site.");
     })().catch((e) => console.log("Could not save links: " + e.message));
-  ' "$OLD"
+  ' "$OLD" "${GENQR_ADMIN_PASS:-password}"
   echo "Port 9400 is still in use by the previous test site. Stop it, then run this script again." >&2
   exit 1
 fi

@@ -24,7 +24,7 @@ class GenQR_Links_Table extends WP_List_Table {
 	public function get_columns() {
 		return array(
 			'cb'            => '<input type="checkbox" />',
-			'code'          => __( 'Short link', 'genqr' ),
+			'code'          => __( 'QR code', 'genqr' ),
 			'destination'   => __( 'Destination', 'genqr' ),
 			'clicks'        => __( 'Clicks', 'genqr' ),
 			'last_click_at' => __( 'Last click', 'genqr' ),
@@ -45,7 +45,8 @@ class GenQR_Links_Table extends WP_List_Table {
 
 	protected function get_bulk_actions() {
 		return array(
-			'enable'  => __( 'Switch on', 'genqr' ),
+			'export_qr' => __( 'Export QR codes', 'genqr' ),
+			'enable'    => __( 'Switch on', 'genqr' ),
 			'disable' => __( 'Switch off', 'genqr' ),
 			'delete'  => __( 'Delete', 'genqr' ),
 		);
@@ -105,7 +106,7 @@ class GenQR_Links_Table extends WP_List_Table {
 		$actions['delete'] = sprintf(
 			'<a href="%s" onclick="return confirm(\'%s\')">%s</a>',
 			esc_url( GenQR_Admin::action_url( 'delete', array( (int) $item->id ) ) ),
-			esc_js( __( 'Delete this link? QR codes that point to it will stop working.', 'genqr' ) ),
+			esc_js( __( 'Delete this QR code? Printed copies will stop working.', 'genqr' ) ),
 			esc_html__( 'Delete', 'genqr' )
 		);
 		return sprintf(
@@ -137,10 +138,10 @@ class GenQR_Links_Table extends WP_List_Table {
 	}
 
 	protected function column_created_at( $item ) {
-		return esc_html( GenQR_Admin::format_date( $item->created_at ) ) . ( $item->created_by ? '' : '<br><small>' . esc_html__( 'by a visitor', 'genqr' ) . '</small>' );
+		return esc_html( GenQR_Admin::format_date( $item->created_at ) );
 	}
 
 	public function no_items() {
-		esc_html_e( 'No short links yet. Visitors create them when they make a QR code, or add one with "Add link".', 'genqr' );
+		esc_html_e( 'No QR codes yet. Use "Add QR code", or "Import" to create many at once.', 'genqr' );
 	}
 }
