@@ -39,7 +39,7 @@ Ask for anything missing before you start. Values marked *secret* follow rule 1.
 | 7 | Logo file | a PNG, square, transparent background | Ask the human to provide it or point to it |
 | 8 | List of links to import (optional) | an .xlsx or CSV file: link, title, short link text | The Import screen has a template |
 
-**Release to install:** `genqr-0.2.1.zip` (or the newest release) from https://github.com/revul93/GenQR-WP/releases. Download it once and keep it as a zip; WordPress installs the zip as is.
+**Release to install:** `genqr-0.3.0.zip` (or the newest release) from https://github.com/revul93/GenQR-WP/releases. Download it once and keep it as a zip; WordPress installs the zip as is.
 
 ---
 
@@ -156,7 +156,7 @@ The page has tabs: **General, Logos, Presets, Short links**. One **Save settings
 | Tab | Field | Value |
 | --- | --- | --- |
 | General | Send other visitors to | input 6 (e.g. `https://www.jeddah-cables.com`); leave empty if the human said none |
-| Logos | Add logos | upload input 7 through the media dialog, select it, **Use these logos**; then tick **Default** on it |
+| Logos | Add logos | the company logo is already there (added by the plugin) and set as **Default**; add input 7 only if the human gave a different one |
 | Presets | (leave as shipped) | Black (default), Indigo, Lagoon, Coral, Emerald. Change only if the human asked |
 | Short links | Link prefix | leave `go` |
 

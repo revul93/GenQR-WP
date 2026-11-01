@@ -7,7 +7,7 @@ A WordPress plugin for branded QR codes that point to short links you control. A
 - **Export**: tick codes in the list (or export all) and get a **ZIP of image files** (PNG, SVG, JPG or PDF, plus an index.csv) or a **printable A4 sheet** with the title and short link under each code. Each code keeps its own design.
 - Change a code's destination at any time and printed codes follow it. Each code counts its scans and keeps a history of changes. Switch codes off or delete them; export the list as CSV.
 - **Public site**: `/go/<code>` redirects (never cached). Every other page of the site can redirect to your main website (Settings → General).
-- Presets and logos are managed in Settings. It ships with Black, Indigo, Lagoon, Coral and Emerald (rounded pattern, circular corners).
+- Presets and logos are managed in Settings. It ships with Black, Indigo, Lagoon, Coral and Emerald (square pattern and corners), and with the company logo (`plugin/genqr/assets/logo.png`), which is added to the Media Library and set as the default logo on first use. Replace that file to ship a different logo.
 
 Design notes and decisions are in [PLAN.md](PLAN.md).
 

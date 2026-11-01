@@ -71,10 +71,15 @@ class GenQR_DB {
 		flush_rewrite_rules();
 	}
 
-	/** Runs install() after a plugin update that changed the schema. */
+	/** Runs install() and one-time changes after a plugin update. */
 	public static function maybe_upgrade() {
-		if ( get_option( 'genqr_db_version' ) !== GENQR_DB_VERSION ) {
-			self::install();
+		$installed = get_option( 'genqr_db_version' );
+		if ( $installed === GENQR_DB_VERSION ) {
+			return;
+		}
+		self::install();
+		if ( $installed && (int) $installed < 5 ) {
+			GenQR_Settings::square_presets();
 		}
 	}
 }

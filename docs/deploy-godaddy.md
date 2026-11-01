@@ -134,7 +134,7 @@ Settings has four tabs. One **Save settings** button saves all of them.
 | Tab | What to set |
 | --- | --- |
 | **General** | **Send other visitors to**: your main website, e.g. `https://www.jeddah-cables.com`. Anyone opening this site's address (anything except a short link) goes there. Leave empty to show the WordPress site as usual. |
-| **Logos** | Click **Add logos**, upload your logo to the Media Library and select it. Mark the one new codes start with as **Default**. |
+| **Logos** | The company logo is already added (it ships with the plugin) and is the **Default**. Use **Add logos** only for extra logos. |
 | **Presets** | Edit or add designs. Mark the one new codes start with as **Default**. |
 | **Short links** | Keep the prefix `go` unless you have a reason. Links look like `https://your-domain/go/expo-2026`. Never change it after codes are printed. |
 

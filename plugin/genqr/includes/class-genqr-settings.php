@@ -25,9 +25,9 @@ class GenQR_Settings {
 			'style'          => array(
 				'foreground'    => '#0b5394',
 				'background'    => '#ffffff',
-				'moduleShape'   => 'rounded',
-				'eyeFrameShape' => 'circle',
-				'eyeBallShape'  => 'circle',
+				'moduleShape'   => 'square',
+				'eyeFrameShape' => 'square',
+				'eyeBallShape'  => 'square',
 			),
 			'presets'        => self::default_presets(),
 			'default_preset' => 0,          // index into presets; the design new codes start with
@@ -36,7 +36,7 @@ class GenQR_Settings {
 
 	/** Ready-made designs; each keeps at least 3:1 contrast on white. */
 	public static function default_presets() {
-		// Every preset: rounded pattern, circular corners.
+		// Every preset: square pattern and corners (the classic, most widely scannable look).
 		$preset = static function ( $name, $fg, $gradient = null ) {
 			return array(
 				'name'  => $name,
@@ -45,9 +45,9 @@ class GenQR_Settings {
 					'background'    => '#ffffff',
 					'gradient'      => $gradient,
 					'eyeColor'      => null,
-					'moduleShape'   => 'rounded',
-					'eyeFrameShape' => 'circle',
-					'eyeBallShape'  => 'circle',
+					'moduleShape'   => 'square',
+					'eyeFrameShape' => 'square',
+					'eyeBallShape'  => 'square',
 				),
 			);
 		};
@@ -188,6 +188,58 @@ class GenQR_Settings {
 			'color'    => strtolower( $g['color'] ),
 			'rotation' => max( 0, min( 360, (int) ( $g['rotation'] ?? 45 ) ) ),
 		);
+	}
+
+	/**
+	 * Adds the logo that ships with the plugin (assets/logo.png) to the Media Library and the
+	 * logo list, as the default when none is set. Runs once per site: if an admin later
+	 * removes it from Settings, it is not added again.
+	 */
+	public static function ensure_bundled_logo() {
+		if ( get_option( 'genqr_bundled_logo' ) ) {
+			return;
+		}
+		$file = GENQR_DIR . 'assets/logo.png';
+		if ( ! is_readable( $file ) ) {
+			return;
+		}
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		$upload = wp_upload_bits( 'genqr-logo.png', null, file_get_contents( $file ) );
+		if ( ! empty( $upload['error'] ) ) {
+			return; // try again on the next admin page load
+		}
+		$id = wp_insert_attachment(
+			array(
+				'post_title'     => __( 'Company logo', 'genqr' ),
+				'post_mime_type' => 'image/png',
+				'post_status'    => 'inherit',
+			),
+			$upload['file']
+		);
+		if ( ! $id || is_wp_error( $id ) ) {
+			return;
+		}
+		wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $upload['file'] ) );
+		update_option( 'genqr_bundled_logo', (int) $id );
+		$s = self::get();
+		self::update(
+			array(
+				'logos'        => array_values( array_unique( array_merge( array( (int) $id ), array_map( 'intval', $s['logos'] ) ) ) ),
+				'default_logo' => (int) $s['default_logo'] ? (int) $s['default_logo'] : (int) $id,
+			)
+		);
+	}
+
+	/** Version 0.3 makes every preset square; applied once to presets saved by earlier versions. */
+	public static function square_presets() {
+		$s = self::get();
+		foreach ( $s['presets'] as &$preset ) {
+			$preset['style']['moduleShape']   = 'square';
+			$preset['style']['eyeFrameShape'] = 'square';
+			$preset['style']['eyeBallShape']  = 'square';
+		}
+		unset( $preset );
+		self::update( array( 'presets' => $s['presets'] ) );
 	}
 
 	/** Logos as {id, name, url}; drops deleted attachments. */
