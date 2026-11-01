@@ -1,6 +1,5 @@
-import type { ClientConfig, Link } from './config';
+import { logoDataUri, type ClientConfig, type Link } from './config';
 import { linkDesign } from './design';
-import { urlToDataUri } from './engine/raster';
 import { renderSvg } from './engine/render';
 
 /**
@@ -12,7 +11,7 @@ export async function drawThumbnails(config: ClientConfig) {
   const logoFor = (id: number) => {
     const logo = config.logos.find((l) => l.id === id);
     if (!logo) return Promise.resolve(null);
-    if (!logos.has(id)) logos.set(id, urlToDataUri(logo.url).catch(() => null));
+    if (!logos.has(id)) logos.set(id, logoDataUri(logo).catch(() => null));
     return logos.get(id)!;
   };
   for (const el of document.querySelectorAll<HTMLElement>('.genqr-thumb[data-link]')) {

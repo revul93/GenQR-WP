@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, fileName, type ClientConfig, type Link } from './config';
+import { api, fileName, logoDataUri, type ClientConfig, type Link } from './config';
 import { linkDesign } from './design';
 import { pdfSheet, zipCodes, type BulkItem } from './engine/bulk';
 import { download, type ExportFormat } from './engine/export';
-import { urlToDataUri } from './engine/raster';
 import { renderSvg } from './engine/render';
 import { Alert, Button, Check, Dialog, Select, ToggleGroup } from './ui';
 
@@ -21,7 +20,7 @@ async function toItems(config: ClientConfig, links: Link[]): Promise<BulkItem[]>
     if (!id) return null;
     if (!logos.has(id)) {
       const logo = config.logos.find((l) => l.id === id);
-      logos.set(id, logo ? await urlToDataUri(logo.url).catch(() => null) : null);
+      logos.set(id, logo ? await logoDataUri(logo).catch(() => null) : null);
     }
     return logos.get(id)!;
   };

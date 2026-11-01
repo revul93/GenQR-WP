@@ -242,19 +242,51 @@ class GenQR_Settings {
 		self::update( array( 'presets' => $s['presets'] ) );
 	}
 
-	/** Logos as {id, name, url}; drops deleted attachments. */
-	public static function logos() {
+	/**
+	 * Logos as {id, name, url}; drops deleted attachments. With $with_data, each also carries
+	 * the image itself as a data URI: the browser puts logos inside QR codes by reading their
+	 * pixels, which fails when the image's address is on another domain (an old site address,
+	 * or a CDN without CORS headers). Read from disk here, it always works.
+	 */
+	public static function logos( $with_data = false ) {
 		$out = array();
 		foreach ( self::get()['logos'] as $id ) {
 			$url = wp_get_attachment_image_url( (int) $id, 'medium' );
-			if ( $url ) {
-				$out[] = array(
-					'id'   => (int) $id,
-					'name' => get_the_title( (int) $id ),
-					'url'  => $url,
-				);
+			if ( ! $url ) {
+				continue;
 			}
+			$logo = array(
+				'id'   => (int) $id,
+				'name' => get_the_title( (int) $id ),
+				'url'  => $url,
+			);
+			if ( $with_data ) {
+				$logo['data'] = self::image_data_uri( (int) $id );
+			}
+			$out[] = $logo;
 		}
 		return $out;
+	}
+
+	/** The attachment as a data URI: the original if it is small enough, else its medium size. */
+	private static function image_data_uri( $id ) {
+		$files    = array();
+		$original = get_attached_file( $id );
+		if ( $original ) {
+			$files[] = $original;
+			$medium  = image_get_intermediate_size( $id, 'medium' );
+			if ( $medium && ! empty( $medium['file'] ) ) {
+				$files[] = path_join( dirname( $original ), $medium['file'] );
+			}
+		}
+		foreach ( $files as $file ) {
+			if ( is_readable( $file ) && filesize( $file ) <= 400 * KB_IN_BYTES ) {
+				$type = wp_check_filetype( $file )['type'];
+				if ( $type && 0 === strpos( $type, 'image/' ) ) {
+					return 'data:' . $type . ';base64,' . base64_encode( (string) file_get_contents( $file ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+				}
+			}
+		}
+		return null; // the browser falls back to downloading the url
 	}
 }

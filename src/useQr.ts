@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { renderSvg } from './engine/render';
 import { scanCheck } from './engine/scan';
-import { urlToDataUri } from './engine/raster';
 import type { QrStyle } from './engine/style';
-import type { Logo } from './config';
+import { logoDataUri, type Logo } from './config';
 
 const logoCache = new Map<number, Promise<string>>();
 
@@ -15,7 +14,7 @@ export function useLogo(logos: Logo[], id: number): string | null {
     setUri(null);
     if (!logo) return;
     let current = true;
-    if (!logoCache.has(id)) logoCache.set(id, urlToDataUri(logo.url));
+    if (!logoCache.has(id)) logoCache.set(id, logoDataUri(logo));
     logoCache.get(id)!.then(
       (u) => current && setUri(u),
       () => logoCache.delete(id),

@@ -66,7 +66,7 @@ class GenQR_Admin {
 	public static function client_config() {
 		$s = GenQR_Settings::get();
 		return array(
-			'logos'       => GenQR_Settings::logos(),
+			'logos'       => GenQR_Settings::logos( true ),
 			'defaultLogo' => (int) $s['default_logo'],
 			'style'       => GenQR_Settings::start_style(),
 			'presets'     => array_map(

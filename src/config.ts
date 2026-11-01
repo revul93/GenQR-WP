@@ -6,6 +6,15 @@ export interface Logo {
   id: number;
   name: string;
   url: string;
+  /** The image as a data URI, sent with the page so it never has to be downloaded. */
+  data?: string | null;
+}
+
+/** A logo's image as a data URI: the copy sent with the page, or downloaded as a fallback. */
+export async function logoDataUri(logo: Logo): Promise<string> {
+  if (logo.data) return logo.data;
+  const { urlToDataUri } = await import('./engine/raster');
+  return urlToDataUri(logo.url);
 }
 
 export interface ClientConfig {
