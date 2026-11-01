@@ -27,8 +27,14 @@ class GenQR_Admin {
 
 	// --- Menus and helpers ----------------------------------------------------------------------
 
+	/** The app logo in one colour; WordPress recolours it to match the admin colour scheme. */
+	private static function menu_icon() {
+		$svg = file_get_contents( GENQR_DIR . 'assets/menu-icon.svg' );
+		return $svg ? 'data:image/svg+xml;base64,' . base64_encode( $svg ) : 'dashicons-screenoptions';
+	}
+
 	public static function menu() {
-		self::$list_hook = add_menu_page( __( 'QR codes', 'genqr' ), __( 'QR codes', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ), 'dashicons-screenoptions', 26 );
+		self::$list_hook = add_menu_page( __( 'QR codes', 'genqr' ), __( 'QR codes', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ), self::menu_icon(), 26 );
 		add_submenu_page( 'genqr', __( 'All QR codes', 'genqr' ), __( 'All QR codes', 'genqr' ), self::CAP, 'genqr', array( __CLASS__, 'page_list' ) );
 		add_submenu_page( 'genqr', __( 'Add QR code', 'genqr' ), __( 'Add QR code', 'genqr' ), self::CAP, 'genqr-add', array( __CLASS__, 'page_add' ) );
 		add_submenu_page( 'genqr', __( 'Import QR codes', 'genqr' ), __( 'Import', 'genqr' ), self::CAP, 'genqr-import', array( __CLASS__, 'page_import' ) );

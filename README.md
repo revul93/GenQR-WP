@@ -1,3 +1,5 @@
+<img src="branding/genqr-logo.svg" alt="" width="96" align="right">
+
 # GenQR for WordPress
 
 A WordPress plugin for branded QR codes that point to short links you control. Administrators make the codes in wp-admin; the public site only redirects the short links.
