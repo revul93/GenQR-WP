@@ -120,7 +120,7 @@ export function Designer({ config, link: initial }: { config: ClientConfig; link
         <form class="stack" onSubmit={save} noValidate>
           <Section title="Content">
             <Field label="Title" helper="Shown in the QR codes list; used for file names and the printed caption.">
-              {(id) => <input id={id} type="text" value={form.title} maxLength={120} placeholder="e.g. Product brochure — Expo 2026" onInput={(e) => set({ title: (e.target as HTMLInputElement).value })} />}
+              {(id) => <input id={id} type="text" value={form.title} maxLength={120} placeholder="ICT Drive" onInput={(e) => set({ title: (e.target as HTMLInputElement).value })} />}
             </Field>
             <Field
               label="QR URL"
@@ -144,7 +144,7 @@ export function Designer({ config, link: initial }: { config: ClientConfig; link
                   <span class="adornment">
                     <bdi dir="ltr">{config.shortBase.replace(/^https?:\/\//, '')}</bdi>
                   </span>
-                  <input id={id} type="text" value={form.code} maxLength={32} placeholder="expo-2026" spellcheck={false} autoComplete="off" onInput={(e) => set({ code: (e.target as HTMLInputElement).value })} />
+                  <input id={id} type="text" value={form.code} maxLength={32} placeholder="ictdrive" spellcheck={false} autoComplete="off" onInput={(e) => set({ code: (e.target as HTMLInputElement).value })} />
                 </div>
               )}
             </Field>
@@ -157,7 +157,7 @@ export function Designer({ config, link: initial }: { config: ClientConfig; link
                   autoComplete="url"
                   required
                   maxLength={2000}
-                  placeholder="https://www.example.com/page"
+                  placeholder="https://drive.google.com/"
                   value={form.url}
                   onInput={(e) => set({ url: (e.target as HTMLInputElement).value })}
                 />
