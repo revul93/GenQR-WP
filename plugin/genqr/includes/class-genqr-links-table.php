@@ -25,8 +25,8 @@ class GenQR_Links_Table extends WP_List_Table {
 		return array(
 			'cb'            => '<input type="checkbox" />',
 			'qr'            => __( 'QR code', 'genqr' ),
-			'code'          => __( 'Short link', 'genqr' ),
-			'destination'   => __( 'Destination', 'genqr' ),
+			'code'          => __( 'QR URL', 'genqr' ),
+			'destination'   => __( 'Destination URL', 'genqr' ),
 			'clicks'        => __( 'Clicks', 'genqr' ),
 			'last_click_at' => __( 'Last click', 'genqr' ),
 			'status'        => __( 'Status', 'genqr' ),

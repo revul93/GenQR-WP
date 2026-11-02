@@ -4,7 +4,7 @@
 
 A WordPress plugin for branded QR codes that point to short links you control. Administrators make the codes in wp-admin; the public site only redirects the short links.
 
-- **Add QR code** (wp-admin → QR codes): title, destination, optional **short link text** (`https://your-site.com/go/expo-2026`, or a random `…/go/k7m2xq9`), a preset or your own colours, shapes and logo, live preview with scan check, then download (PNG, JPG, SVG, PDF, Word) or print.
+- **Add QR code** (wp-admin → QR codes): title, destination, optional **QR URL** (`https://your-site.com/go/expo-2026`, or a random `…/go/k7m2xq9`), a preset or your own colours, shapes and logo, live preview with scan check, then download (PNG, JPG, SVG, PDF, Word) or print.
 - **Import**: upload a CSV or Excel (.xlsx) file with link, title and short link text per row. Every row is checked first; one preset and logo apply to the whole import.
 - **Export**: tick codes in the list (or export all) and get a **ZIP of image files** (PNG, SVG, JPG or PDF, plus an index.csv) or a **printable A4 sheet** with the title and short link under each code. Each code keeps its own design.
 - Change a code's destination at any time and printed codes follow it. Each code counts its scans and keeps a history of changes. Switch codes off or delete them; export the list as CSV.

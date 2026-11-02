@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCsv, toImportRows } from '../src/importFile';
+import { parseCsv, TEMPLATE_CSV, toImportRows } from '../src/importFile';
 
 describe('parseCsv', () => {
   it('handles quotes, embedded commas, CRLF and a BOM', () => {
@@ -26,6 +26,22 @@ describe('toImportRows', () => {
     expect(rows).toEqual([{ line: 2, url: 'https://example.com/b', title: 'Brochure', code: 'expo-2026', error: null }]);
   });
 
+  it('reads "QR URL" as the short link, not the destination', () => {
+    const rows = toImportRows([
+      ['Title', 'QR URL', 'Destination URL'],
+      ['Brochure', 'expo-2026', 'https://example.com/b'],
+    ]);
+    expect(rows).toEqual([{ line: 2, url: 'https://example.com/b', title: 'Brochure', code: 'expo-2026', error: null }]);
+  });
+
+  it('reads the download template', () => {
+    const rows = toImportRows(parseCsv(TEMPLATE_CSV));
+    expect(rows.map((r) => [r.url, r.code, r.error])).toEqual([
+      ['https://www.example.com/brochure', 'brochure-2026', null],
+      ['https://www.example.com/contact', '', null],
+    ]);
+  });
+
   it('assumes url, title, short link order without a header', () => {
     const [row] = toImportRows([['example.com/page', 'Page', '']]);
     expect(row).toMatchObject({ line: 1, url: 'example.com/page', title: 'Page', code: '', error: null });
@@ -40,6 +56,6 @@ describe('toImportRows', () => {
       ['https://d.com', 'D', 'x'],
       ['', '', ''],
     ]);
-    expect(rows.map((r) => r.error)).toEqual([null, 'Same short link as line 2.', 'Not a valid web address.', 'Short link text must be 2–32 letters, numbers, dashes or underscores.']);
+    expect(rows.map((r) => r.error)).toEqual([null, 'Same QR URL as line 2.', 'Not a valid web address.', 'The QR URL must be 2–32 letters, numbers, dashes or underscores.']);
   });
 });

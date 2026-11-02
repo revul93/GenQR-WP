@@ -122,23 +122,8 @@ export function Designer({ config, link: initial }: { config: ClientConfig; link
             <Field label="Title" helper="Shown in the QR codes list; used for file names and the printed caption.">
               {(id) => <input id={id} type="text" value={form.title} maxLength={120} placeholder="e.g. Product brochure — Expo 2026" onInput={(e) => set({ title: (e.target as HTMLInputElement).value })} />}
             </Field>
-            <Field label="Link (URL)" helper="Where the QR code goes. You can change it any time; printed codes follow the change.">
-              {(id) => (
-                <input
-                  id={id}
-                  type="url"
-                  inputMode="url"
-                  autoComplete="url"
-                  required
-                  maxLength={2000}
-                  placeholder="https://www.example.com/page"
-                  value={form.url}
-                  onInput={(e) => set({ url: (e.target as HTMLInputElement).value })}
-                />
-              )}
-            </Field>
             <Field
-              label="Short link text"
+              label="QR URL"
               error={codeState.status === 'error'}
               helper={
                 codeState.status === 'error'
@@ -161,6 +146,21 @@ export function Designer({ config, link: initial }: { config: ClientConfig; link
                   </span>
                   <input id={id} type="text" value={form.code} maxLength={32} placeholder="expo-2026" spellcheck={false} autoComplete="off" onInput={(e) => set({ code: (e.target as HTMLInputElement).value })} />
                 </div>
+              )}
+            </Field>
+            <Field label="Destination URL" helper="Where the QR code goes. You can change it any time; printed codes follow the change.">
+              {(id) => (
+                <input
+                  id={id}
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  required
+                  maxLength={2000}
+                  placeholder="https://www.example.com/page"
+                  value={form.url}
+                  onInput={(e) => set({ url: (e.target as HTMLInputElement).value })}
+                />
               )}
             </Field>
             {link && <Check switchStyle label={form.active ? 'On: scanning opens the link' : 'Off: scanning shows "link not available"'} checked={form.active} onChange={(v) => set({ active: v })} />}

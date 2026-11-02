@@ -53,12 +53,12 @@ class GenQR_Links {
 	public static function validate_code( $code, $except_id = 0 ) {
 		$clean = GenQR_Settings::sanitize_code( $code );
 		if ( null === $clean ) {
-			return new WP_Error( 'genqr_code_invalid', __( 'Short link text must be 2–32 characters: letters, numbers, dashes or underscores, starting and ending with a letter or number.', 'genqr' ) );
+			return new WP_Error( 'genqr_code_invalid', __( 'The QR URL must be 2–32 characters: letters, numbers, dashes or underscores, starting and ending with a letter or number.', 'genqr' ) );
 		}
 		$existing = self::get_by_code( $clean );
 		if ( $existing && (int) $existing->id !== (int) $except_id ) {
 			/* translators: %s: short link text */
-			return new WP_Error( 'genqr_code_taken', sprintf( __( 'The short link "%s" is already used by another QR code.', 'genqr' ), $clean ) );
+			return new WP_Error( 'genqr_code_taken', sprintf( __( 'The QR URL "%s" is already used by another QR code.', 'genqr' ), $clean ) );
 		}
 		return $clean;
 	}

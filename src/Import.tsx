@@ -78,7 +78,7 @@ export function Import({ config }: { config: ClientConfig }) {
     <div class="genqr">
       <Section title="1. Choose a file">
         <p class="body2">
-          One row per QR code: the <strong>link</strong> (required), a <strong>title</strong> and the <strong>short link text</strong> after <span class="mono">/{config.shortBase.split('/').filter(Boolean).pop()}/</span> (both optional; empty gives a random code). Excel files (.xlsx) and CSV are accepted, up to {MAX_ROWS} rows.
+          One row per QR code: a <strong>title</strong>, the <strong>QR URL</strong> text after <span class="mono">/{config.shortBase.split('/').filter(Boolean).pop()}/</span> (title and QR URL are optional; an empty QR URL gives a random code) and the <strong>destination URL</strong> (required). Excel files (.xlsx) and CSV are accepted, up to {MAX_ROWS} rows.
         </p>
         <div class="row">
           <label class="btn contained file-btn">
@@ -103,8 +103,8 @@ export function Import({ config }: { config: ClientConfig }) {
                 <tr>
                   <th>Line</th>
                   <th>Title</th>
-                  <th>Link</th>
-                  <th>Short link</th>
+                  <th>QR URL</th>
+                  <th>Destination URL</th>
                   <th>{results ? 'Result' : 'Check'}</th>
                 </tr>
               </thead>
@@ -115,8 +115,8 @@ export function Import({ config }: { config: ClientConfig }) {
                     <tr key={r.line} class={r.error || (res && !res.ok) ? 'bad' : res?.ok ? 'good' : ''}>
                       <td>{r.line}</td>
                       <td>{r.title || <span class="muted-text">—</span>}</td>
-                      <td class="break">{r.url}</td>
                       <td class="mono">{res?.ok ? res.link.code : r.code || <span class="muted-text">random</span>}</td>
+                      <td class="break">{r.url}</td>
                       <td>
                         {r.error ? (
                           r.error
@@ -152,7 +152,7 @@ export function Import({ config }: { config: ClientConfig }) {
               <div class="preview">
                 <img src={'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)} alt="Design preview" />
               </div>
-              <p class="caption center">Preview with the first row's short link.</p>
+              <p class="caption center">Preview with the first row's QR URL.</p>
               {runError && <Alert severity="error">{runError}</Alert>}
               <Button variant="contained" size="large" icon="upload" full onClick={run} disabled={!!progress}>
                 {progress ? `Importing ${progress.done} of ${progress.total}…` : `Import ${valid.length} QR code${valid.length === 1 ? '' : 's'}`}

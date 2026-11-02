@@ -13,7 +13,7 @@ export interface ImportRow {
 
 export const MAX_ROWS = 2000;
 
-export const TEMPLATE_CSV = '﻿url,title,short_link\r\nhttps://www.example.com/brochure,Product brochure,brochure-2026\r\nhttps://www.example.com/contact,Contact us,\r\n';
+export const TEMPLATE_CSV = '﻿title,qr_url,destination_url\r\nProduct brochure,brochure-2026,https://www.example.com/brochure\r\nContact us,,https://www.example.com/contact\r\n';
 
 const CODE = /^[a-z0-9][a-z0-9_-]{0,30}[a-z0-9]$/;
 
@@ -77,7 +77,7 @@ export function toImportRows(cells: string[][]): ImportRow[] {
   if (!nonEmpty.length) return [];
   const header = nonEmpty[0]!.map((c) => c.trim().toLowerCase());
   const find = (re: RegExp, not?: RegExp) => header.findIndex((h) => re.test(h) && !(not && not.test(h)));
-  let col = { url: find(/url|link|destination|address|website|رابط|عنوان/, /short|code/), title: find(/title|name|label|description|اسم/), code: find(/short|code|slug|alias|text/) };
+  let col = { url: find(/url|link|destination|address|website|رابط|عنوان/, /short|code|qr/), title: find(/title|name|label|description|اسم/), code: find(/short|code|slug|alias|text|qr/) };
   const hasHeader = col.url >= 0 && !looksLikeUrl(nonEmpty[0]![col.url] ?? '');
   if (!hasHeader) col = { url: 0, title: 1, code: 2 };
 
@@ -90,10 +90,10 @@ export function toImportRows(cells: string[][]): ImportRow[] {
     const rawCode = col.code >= 0 ? (r[col.code] ?? '').trim() : '';
     const code = cleanCode(rawCode);
     let error: string | null = null;
-    if (!url) error = 'No link (URL).';
+    if (!url) error = 'No destination URL.';
     else if (!looksLikeUrl(url)) error = 'Not a valid web address.';
-    else if (code && !CODE.test(code)) error = 'Short link text must be 2–32 letters, numbers, dashes or underscores.';
-    else if (code && seen.has(code)) error = `Same short link as line ${seen.get(code)}.`;
+    else if (code && !CODE.test(code)) error = 'The QR URL must be 2–32 letters, numbers, dashes or underscores.';
+    else if (code && seen.has(code)) error = `Same QR URL as line ${seen.get(code)}.`;
     if (code && !seen.has(code)) seen.set(code, line);
     return { line, url, title, code, error };
   });
